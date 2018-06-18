@@ -153,7 +153,8 @@ private:
 	//TF1* TProfFit = new TF1("TProfFit","gaus(0)+gaus(3)",-20., 20.); // Fit function for energy prifile
 	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
 	TF1* TProfFit_Radial = new TF1("TProfFit_Radial"," landau ",0., 20.); // Fit function for energy prifile
-	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[3]* ROOT::Math::gamma_pdf(x , [0] , [1] , [2]) ",0., 250.); // Fit function for energy prifile in longitudinal direction
+	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[AMP]* ROOT::Math::gamma_pdf(x , [ALPHA] , [THETA], [MU]) ",0., 250.); // Fit function for energy prifile in longitudinal direction
+	//TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "landau",0., 250.); // Fit function for energy prifile in longitudinal direction
 
 	// Moliere Radius
 	TH1D* hMolRadHitPCA;			  	 
@@ -548,7 +549,7 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[1] = energyDeposit.y;	        // Y
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
-						if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
+						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						hTruePosition3D->Fill(vHitPos[0], vHitPos[1], vHitPos[2], energyDeposit.energy); // fill 3D PCA histogram
 					
 					} else { // 2D case
@@ -557,7 +558,7 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
 						vHitPos[1] = energyDeposit.z - 250.;	// Z
 						
-						if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
+						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
 
 						if (HistFill != event) { 
 							hTruePosition2D->Fill(vHitPos[1], vHitPos[0], energyDeposit.energy);
@@ -1391,8 +1392,14 @@ void MolRadReco::endJob()
 	std::cout << "IntegralTrue= "<< hTrueEnergyProfile -> Integral() << std::endl; // Output the number of entries 
 	
 	// Fit the true energy longitudinal profle
-	//hTrueEnergyProfile->Fit("TrueEnergyProfileFit","R"); 
-	//TrueEnergyProfileFit = hTrueEnergyProfile->GetFunction("TrueEnergyProfileFit");
+	TrueEnergyProfileFit -> SetParLimits(0,  1,  10);   // ALPHA
+    TrueEnergyProfileFit -> SetParLimits(1,  1,  1e7);  // AMP
+    TrueEnergyProfileFit -> SetParLimits(2,  0,  100);  // MU
+    TrueEnergyProfileFit -> SetParLimits(3,  1,  100);  // THETA
+
+
+	hTrueEnergyProfile->Fit("TrueEnergyProfileFit","R"); 
+	TrueEnergyProfileFit = hTrueEnergyProfile->GetFunction("TrueEnergyProfileFit");
 
 	// Normalise reco Energy profile
 	//scale = hEnergyProfile->GetBinContent(hEnergyProfile->GetMaximumBin()); // Scale by the max bin value
