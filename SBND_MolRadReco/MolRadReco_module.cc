@@ -27,14 +27,14 @@
 #include "lardataobj/Simulation/SimChannel.h" //
 #include "lardataobj/Simulation/SimPhotons.h" //
 #include "lardataobj/Simulation/AuxDetSimChannel.h" //
-#include "lardata/DetectorInfoServices/DetectorPropertiesService.h" //
-//#include "lardata/DetectorInfo/DetectorPropertiesStandard.h" //
-#include "larsim/Simulation/LArG4Parameters.h" //
+#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"     //
+//#include "lardata/DetectorInfo/DetectorPropertiesStandard.h"          // Commented out as causing a error when building
+#include "larsim/Simulation/LArG4Parameters.h"                          //
 #include "larcore/Geometry/Geometry.h" //
 #include "larreco/Calorimetry/CalorimetryAlg.h" //
 #include "lardataobj/RecoBase/Hit.h" //
-#include "larreco/Calorimetry/CalorimetryAlg.h" 			// For dEdx conversion
-#include "larreco/RecoAlg/ClusterRecoUtil/ClusterParamsAlg.h"				// for cluster params alg function 
+#include "larreco/Calorimetry/CalorimetryAlg.h" 			            // For dEdx conversion
+#include "larreco/RecoAlg/ClusterRecoUtil/ClusterParamsAlg.h"		    // for cluster params alg function 
 #include "larevt/CalibrationDBI/Interface/ElectronLifetimeService.h"    // For dEdx conversion
 #include "larevt/CalibrationDBI/Interface/ElectronLifetimeProvider.h"   // For dEdx conversion
 
@@ -1111,19 +1111,28 @@ void MolRadReco::analyze(art::Event const & event)
 	// create vector of particles involved in event
 	art::Handle< std::vector<simb::MCParticle> > particleHandle;
 	event.getByLabel(fSimulationProducerLabel, particleHandle);
+
+
+	
 	
 	double dEnergyInitial = 0.;
 	// find primary particle to get initial truth energy
 	for(std::vector<simb::MCParticle>::const_iterator particlePtr = particleHandle->begin(); particlePtr != particleHandle->end(); ++particlePtr) {
 		const simb::MCParticle& particle = (*particlePtr); // De-reference the particle pointer
-		if (particle.Process() == "primary") {	           // if particle is primary
+
+		//std::cout <<"PDG\t" <<  particle.PdgCode()  << std::endl; // Print the PDG code of all the particles that were in the event. 
+
+		if (particle.Process() == "primary") {	        // if particle is primary
 			dEnergyInitial += particle.Momentum(0).E()*1000.;	// initial energy (adds together over all primary particles)
 		}
+
+		// Get the g4 step times for the particles in the event
+		//for(unsigned int i=0; i < particle.NumberTrajectoryPoints(); i++) {
+		//	std::cout << "Particle postion step time\t" << particle.Position(i).T() << std::endl;
+		//}
+
 	}
 	
-
-
-
 
 	// *** *************BEGIN 2D PCA <Truth> *****************************
 	dEnergyDepositedSum = GetTruthXYZE(simChannelVec, false, event.event()); // Get the Truth X, Y Z and Energy for the event
@@ -1134,7 +1143,8 @@ void MolRadReco::analyze(art::Event const & event)
 	// Calculate the moliere radius for Truth in 2D without alignment, This only makes sense for straight projected showers. 
 	for (unsigned int i = 0; i < vEntries.size(); i++) { // fill the perp dist histogram
 		hPerpDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy); // abs(x), E
-		if (event.event()==1) hTrueEnergyProfileX->Fill(vEntries[i].position[0] , vEntries[i].energy); // Fill the truth energy profile histogram for the x direction. uncorrected now
+		hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere radius calculation for all events
+		hTrueEnergyProfileX->Fill(vEntries[i].position[0] , vEntries[i].energy); // Fill the truth energy profile histogram for the x direction. uncorrected now
 	
 
 		//if(event.event()==211) std::cout << "Zpos\t"<< vEntries[i].position[1] << "   "  << "Xpos\t"<< vEntries[i].position[0]  << std::endl;
@@ -1231,7 +1241,7 @@ void MolRadReco::analyze(art::Event const & event)
 	for (unsigned int i = 0; i < vEntries.size(); i++) { // fill the perp dist histogram
 		hPerpDist->Fill(std::sqrt(std::pow(vEntries[i].position[0], 2) + std::pow(vEntries[i].position[1], 2)), vEntries[i].energy); // abs(sqrt(x^2 + y^2), E
 		hTrueEnergyProfileR->Fill(std::sqrt( std::pow(vEntries[i].position[0] ,2) + std::pow(vEntries[i].position[1] ,2) )   , vEntries[i].energy); // Fill the truth energy profile histogram for the radial direction. uncorrected now
-		hPerpDist_All->Fill(std::sqrt(std::pow(vEntries[i].position[0] , 2) + std::pow(vEntries[i].position[1], 2)), vEntries[i].energy); // Moliere radius calculation for all events
+		//hPerpDist_All->Fill(std::sqrt(std::pow(vEntries[i].position[0] , 2) + std::pow(vEntries[i].position[1], 2)), vEntries[i].energy); // Moliere radius calculation for all events
 	}
 
 	double dMolRad3DTruth = moliereRadius(dEnergyDepositedSum); // Calculate the moliere radius
@@ -1493,7 +1503,8 @@ void MolRadReco::endJob()
 
 	// Calculate moliere radius based on the transverse profile x or radial.
 	// NOTE CHANGE xmin if changing h
-	TH1D* h = hTrueEnergyProfileR; //choose histogram
+	//TH1D* h = hTrueEnergyProfileR; //choose histogram
+	TH1D* h = hTrueEnergyProfileX; //choose histogram
 
 	TAxis *axis = h->GetXaxis();
 	int bmin = 0 ;
@@ -1508,8 +1519,8 @@ void MolRadReco::endJob()
 
 	// NOTE CHANGE xmin if changing h
 	for (double k = 0; k < integralimit; k+=0.1){
-	//xmin = -1 * k; // 2D
-	xmin =0;  // 3D
+	xmin = -1 * k; // 2D
+	//xmin =0;  // 3D
 	xmax = k ;
 
 	bmin = axis->FindBin(xmin); 
@@ -1520,9 +1531,12 @@ void MolRadReco::endJob()
 	integral_range -= h->GetBinContent(bmin) * ( xmin - axis->GetBinLowEdge(bmin) ) / axis->GetBinWidth(bmin);
 	integral_range -= h->GetBinContent(bmax) * ( axis->GetBinUpEdge(bmax)- xmax) / axis->GetBinWidth(bmax);
 
-	if (integral_range >= 0.95*integral_total) break; 
-
-	std::cout << "Integral range = " << integral_range << "\t Total Integral = " << integral_total << "\tx = " << k << std::endl;
+	if (integral_range >= 0.95*integral_total) {
+		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
+		std::cout << "Integral range = " << integral_range << "\t Total Integral = " << integral_total << "\tMoliereRadius = " << k << std::endl;
+	    std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
+		break; 
+	}
 
 	if (k == integralimit) std::cout <<  "REACHED LIMIT OF RANGE" << std::endl;
 
