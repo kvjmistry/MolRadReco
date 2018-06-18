@@ -545,13 +545,11 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 					if (use3D == true) {
 						TVectorD vHitPos(3);
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
-						vHitPos[1] = energyDeposit.y;	// Y
+						vHitPos[1] = energyDeposit.y;	        // Y
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
-						if (vHitPos[2] > 0.) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
+						if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						hTruePosition3D->Fill(vHitPos[0], vHitPos[1], vHitPos[2], energyDeposit.energy); // fill 3D PCA histogram
-
-						
 					
 					} else { // 2D case
 						
@@ -559,8 +557,7 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
 						vHitPos[1] = energyDeposit.z - 250.;	// Z
 						
-						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
-						else {}// Add the entries to the vector
+						if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
 
 						if (HistFill != event) { 
 							hTruePosition2D->Fill(vHitPos[1], vHitPos[0], energyDeposit.energy);
