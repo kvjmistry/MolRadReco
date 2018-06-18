@@ -548,11 +548,7 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[1] = energyDeposit.y;	// Y
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
-						if (vHitPos[2] < 0.) {vHitPos[0] = 0.; vHitPos[1] = 0.; vHitPos[2] = 0.; addDataEntry(0, vHitPos); dEnergyDepositedSum +=0;  } // delete any spurious data points (z<0)
-						else {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // Add the entries to the vector
-
-						//addDataEntry(energyDeposit.energy, vHitPos); // Add the entries to the vector
-						//dEnergyDepositedSum += energyDeposit.energy; // calculate energy sum
+						if (vHitPos[2] > 0.) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						hTruePosition3D->Fill(vHitPos[0], vHitPos[1], vHitPos[2], energyDeposit.energy); // fill 3D PCA histogram
 
 						
@@ -563,12 +559,8 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
 						vHitPos[1] = energyDeposit.z - 250.;	// Z
 						
-						if (vHitPos[1] < 0.) {vHitPos[0] = 0.; vHitPos[1] = 0.; addDataEntry(0, vHitPos); dEnergyDepositedSum +=0;  } // delete any spurious data points (z<0)
-						else {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;}// Add the entries to the vector
-						
-						
-						//dEnergyDepositedSum += energyDeposit.energy; // calculate energy sum
-
+						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
+						else {}// Add the entries to the vector
 
 						if (HistFill != event) { 
 							hTruePosition2D->Fill(vHitPos[1], vHitPos[0], energyDeposit.energy);
@@ -1503,8 +1495,8 @@ void MolRadReco::endJob()
 
 	// Calculate moliere radius based on the transverse profile x or radial.
 	// NOTE CHANGE xmin if changing h
-	//TH1D* h = hTrueEnergyProfileR; //choose histogram
-	TH1D* h = hTrueEnergyProfileX; //choose histogram
+	TH1D* h = hTrueEnergyProfileR; //choose histogram
+	//TH1D* h = hTrueEnergyProfileX; //choose histogram
 
 	TAxis *axis = h->GetXaxis();
 	int bmin = 0 ;
@@ -1519,8 +1511,8 @@ void MolRadReco::endJob()
 
 	// NOTE CHANGE xmin if changing h
 	for (double k = 0; k < integralimit; k+=0.1){
-	xmin = -1 * k; // 2D
-	//xmin =0;  // 3D
+	//xmin = -1 * k; // 2D
+	xmin =0;  // 3D
 	xmax = k ;
 
 	bmin = axis->FindBin(xmin); 
@@ -1531,7 +1523,7 @@ void MolRadReco::endJob()
 	integral_range -= h->GetBinContent(bmin) * ( xmin - axis->GetBinLowEdge(bmin) ) / axis->GetBinWidth(bmin);
 	integral_range -= h->GetBinContent(bmax) * ( axis->GetBinUpEdge(bmax)- xmax) / axis->GetBinWidth(bmax);
 
-	if (integral_range >= 0.95*integral_total) {
+	if (integral_range >= 0.9*integral_total) {
 		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
 		std::cout << "Integral range = " << integral_range << "\t Total Integral = " << integral_total << "\tMoliereRadius = " << k << std::endl;
 	    std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
