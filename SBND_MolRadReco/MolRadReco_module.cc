@@ -42,6 +42,8 @@
 #include "nutools/ParticleNavigation/EmEveIdCalculator.h" //
 #include "larcoreobj/SimpleTypesAndConstants/geo_types.h" //
 
+//#include "nusimdata/SimulationBase/MCTrajectory.h" // for MCtrajectroy
+
 // ROOT includes
 #include "TH1.h" 
 #include "TH2.h" 
@@ -120,7 +122,8 @@ public:
   void runPCA();		// principal component analysis
   void runSOSA(double cm);	// start of shower alignment
   double moliereRadius(double energySum); // calulates the moiere radius
-  double GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int event);
+  double GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int event); // Function that gets the truth quantities of a hit and pushes them into a vector
+  double GetRecoXYZE(art::Event const & event, double dEnergySum ); // Function that gets the reconstructed quantities of a hit and pushes them into a vector
 
 private:
 
@@ -153,7 +156,7 @@ private:
 	//TF1* TProfFit = new TF1("TProfFit","gaus(0)+gaus(3)",-20., 20.); // Fit function for energy prifile
 	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
 	TF1* TProfFit_Radial = new TF1("TProfFit_Radial"," landau ",0., 20.); // Fit function for energy prifile
-	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[AMP]* ROOT::Math::gamma_pdf(x , [ALPHA] , [THETA], [MU]) ",0., 250.); // Fit function for energy prifile in longitudinal direction
+	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[AMP]* ROOT::Math::gamma_pdf(x , [ALPHA] , [THETA], [MU]) ",8., 250.); // Fit function for energy prifile in longitudinal direction
 	//TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "landau",0., 250.); // Fit function for energy prifile in longitudinal direction
 
 	// Moliere Radius
@@ -234,6 +237,11 @@ private:
     //std::vector<double> PCA_ZPos;
     double PCA_E_Total;
     double Truth_E_Total; 
+
+	// Vectors for making the scatter plot of dQ/dx against dE/dx
+	std::vector<double> vdQdx;
+	std::vector<double> vdEdx;
+
 
 
 };
@@ -578,6 +586,85 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 	return dEnergyDepositedSum; 
 }
 
+double MolRadReco::GetRecoXYZE(art::Event const & event,  double dEnergySum ){
+	
+	// hitHandle: Holds hit information
+	art::Handle<std::vector<recob::Hit>> hitHandle; // Handle is a smart pointer
+		
+	// detprop: Detector Properties
+	auto const* detprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
+	
+	// loop over hit handles (chooses the right event number to run)
+	for(std::vector<std::string>::const_iterator hhn = fHitProducerLabel.begin(); hhn != fHitProducerLabel.end(); ++hhn) { // hits are stored un fHitProducer Label for each event
+		event.getByLabel(*hhn, hitHandle); // event comes from the input of the function and getByLabel grabs the info
+
+		// if successful at getting hit handle
+		if(!(hitHandle.failedToGet())) {
+			
+			// Loop over hits in said event 
+			for(auto hit = hitHandle -> begin(); hit != hitHandle -> end(); ++hit) {
+				
+				// if hit is in collection plane
+				if(fGeometry -> SignalType(hit -> Channel()) == geo::kCollection) {
+					
+					// Add hit coordinates to a vector
+					geo::PlaneID plane_id = (hit -> WireID()).asPlaneID();
+
+					TVectorD vHitPos(2);	// Create a vector of size 2 for storing the hits in the x and z coordinates
+					// X [contains the stored hit positions]
+					vHitPos[0] = detprop -> ConvertTicksToX((double) hit -> PeakTime(), plane_id) - 102.5;
+					
+					// Z [contains the stored hit positions with a geometrical factor conversion for wire plane spacing ]
+					// -263 for shifting channel
+					vHitPos[1] = ((double) hit -> Channel() - 10440) * pitch; 
+
+					// Make conversion of hits from ADC*Ticks to MeV/cm 					
+					double T0 = 0;   // Initial start time
+					double dEdx = 0; // In MeV/cm
+					double dE = 0; 
+					
+					// Calls dEdx function and returns the conversion in MeV/cm based on area of hit
+					dEdx = fCalorimetryAlg.dEdx_AREA(*hit,pitch, T0)  ; 
+					
+					// Look for unusually large dEdx values and replace with the previous value to correct
+                    if(hit->Integral() > 1000){ 
+						
+						// Use a modified calibration for dEdx
+						dEdx = 0.007484 * hit->Integral() + -.3594; 	
+			
+					}
+					
+					// Add to the dQdx and dEdx vectors. 
+					vdQdx.push_back(hit->Integral());
+					vdEdx.push_back(dEdx);
+
+					// Convert the dE/dx value to dE by multiplying by dx =  0.3 mm;
+					dE = dEdx * pitch;
+					
+					// calculate energy sum
+					dEnergySum += dE; // Sum of all hit energies
+
+					// creates a struct entry which contains the energy and vHitPos (Z,X positions of the hits)
+					addDataEntry(dE, vHitPos);     
+					
+					// Add parameters to a vector for a ttree
+					if (event.event()==1){
+						//Reco_E.push_back(dE);
+						//Reco_XPos.push_back(vHitPos[0] - 25); // minus 25 to center on zero in the detector
+						//Reco_ZPos.push_back(vHitPos[1]);
+					}
+
+				}// End condition if in collection plane
+
+			} // End loop over all hits 
+
+		} // End condition of failed hithandle
+
+	} // End Loop over hit handles
+
+	return dEnergySum;
+
+}
 
 void MolRadReco::beginJob() {
 	// Access ART's TFileService, which will handle histograms/trees/etc.
@@ -840,10 +927,11 @@ void MolRadReco::beginSubRun(art::SubRun const & sr)
   // Implementation of optional member function here.
 }
 
+//o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 // Analyser: runs once per event over all events
 void MolRadReco::analyze(art::Event const & event)
 {
-	std::cout  << "Event\t" <<event.event() << std::endl;
+	std::cout  << "Event\t" <<event.event() << std::endl; // DIsplay the event number
 
 	// Determine event ID
   	run = event.id().run();
@@ -852,101 +940,14 @@ void MolRadReco::analyze(art::Event const & event)
     
 	bool bUseSOSA = true;
 	fills+=1; // Add one to fills for rescaling energy profile	
-
-	// hitHandle: Holds hit information
-	art::Handle<std::vector<recob::Hit>> hitHandle; // Handle is a smart pointer
-		
-	// detprop: Detector Properties
-	auto const* detprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
 	
-	// event-specific histograms
+	// Energy Sum of Reconstructed Hits
 	double dEnergySum = 0.;
-	int vEntryFills = 0 ; // Number of fills to current vEntry 
 
+	// Run the reconstruction algorithm  
+	dEnergySum = GetRecoXYZE(event, dEnergySum ); 
 
-	// loop over hit handles (chooses the right event number to run)
-	for(std::vector<std::string>::const_iterator hhn = fHitProducerLabel.begin(); hhn != fHitProducerLabel.end(); ++hhn) { // hits are stored un fHitProducer Label for each event
-		event.getByLabel(*hhn, hitHandle); // event comes from the input of the function and getByLabel grabs the info
-
-		// if successful at getting hit handle
-		if(!(hitHandle.failedToGet())) {
-			
-			// Loop over hits in said event 
-			for(auto hit = hitHandle -> begin(); hit != hitHandle -> end(); ++hit) {
-				
-				// if hit is in collection plane
-				if(fGeometry -> SignalType(hit -> Channel()) == geo::kCollection) {
-					
-					// Add hit coordinates to a vector
-					geo::PlaneID plane_id = (hit -> WireID()).asPlaneID();
-
-					TVectorD vHitPos(2);	// Create a vector of size 2 for storing the hits in the x and z coordinates
-					// X [contains the stored hit positions]
-					vHitPos[0] = detprop -> ConvertTicksToX((double) hit -> PeakTime(), plane_id) - 102.5;
-					
-					// Z [contains the stored hit positions with a geometrical factor conversion for wire plane spacing ]
-					// -263 for shifting channel
-					vHitPos[1] = ((double) hit -> Channel() - 10440) * pitch; 
-					
-					// ----------------------------------------------------------------------------------//
-					// Make conversion of hits from ADC*Ticks to MeV/cm 
-					
-					double T0 = 0; // Initial start time
-					double dEdx = 0; // In MeV/cm
-					double dE = 0; 
-					
-					// Calls dEdx function and returns the conversion in MeV/cm based on area of hit
-					dEdx = fCalorimetryAlg.dEdx_AREA(*hit,pitch, T0)  ; 
-					
-					// Look for unusually large dEdx values and replace with the previous value to correct
-                    if(hit->Integral() > 1000){ 
-						
-						// Use a modified calibration for dEdx
-						dEdx = 0.007484 * hit->Integral() + -.3594; 	
-			
-					}
-				
-					// ---------------------------------------------------------------------------------
-
-					// Convert the dE/dx value to dE by multiplying by dx = 0.4cm/cos(60);
-					dE = dEdx * pitch;
-					
-					// calculate energy sum
-					dEnergySum += dE; // Sum of all hit energies
-
-					// creates a struct entry which contains the energy and vHitPos (Z,X positions of the hits)
-					addDataEntry(dE, vHitPos);     
-
-					// fill 2D PCA histogram
-					// (Z,X,Energy) Shows a histogram of the x-z plane of all the showers combined
-					hPosition2D -> Fill(vHitPos[1], vHitPos[0], dE); 
-
-					// Fill the dEdx histogram  
-					hdEdxValues -> Fill(dE);
-					
-					// Fil the scatter plot for dEdx vs Hit integral
-					gECalScat -> SetPoint(vEntryFills, hit->Integral(),dEdx); 
-
-					//std::cout<< "vHitPos[1]: "<< vHitPos[1] << "    Energy: " << dEdx << "    Wire: "<< << std::endl;
-					
-					vEntryFills ++; // Add one to the counter
-					
-					// Add parameters to a vector for a ttree
-					if (event.event()==1){
-						//Reco_E.push_back(dE);
-						//Reco_XPos.push_back(vHitPos[0] - 25); // minus 25 to center on zero in the detector
-						//Reco_ZPos.push_back(vHitPos[1]);
-					}
-
-				}// End condition if in collection plane
-
-			} // End loop over all hits 
-
-		} // End condition of failed hithandle
-
-	} // End Loop over hit handles
-
-	std::cout << "dEdx sum: " << dEnergySum << std::endl;
+	std::cout << "dEdx sum: " << dEnergySum << std::endl; // Display the total energy that has been reconstructed. 
 
 	double RecoEnergyTotal = dEnergySum ;
 	PCA_E_Total+=dEnergySum; // Add to a number to get the total reconstructed energy of all events. 
@@ -954,33 +955,41 @@ void MolRadReco::analyze(art::Event const & event)
 	RecoEnergyVector.push_back(dEnergySum); // Add the reco energy to a vector
 
 	int N = vEntries.size(); // Total size of vector
+
+    // Fil the scatter plot for dEdx vs Hit integral
+    for (unsigned int i=0; i< vdQdx.size(); i++){
+		gECalScat -> SetPoint(vdQdx.size(), vdQdx[i], vdEdx[i]); 
+	}
+	vdQdx.clear(); vdEdx.clear(); // clear the vectors
 	
-	// Make energy profile (not PCA or SOSA) for 1 event
+	// Make Histograms
 	for (int i = 0; i < N; i++ ) {
 		hEnergyProfile->Fill(vEntries[i].position[1], vEntries[i].energy); //Choose 1 event to look at the energy profile
 		//hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
+
+		// Fill 2D histogram (event display like) (Z,X,Energy) Shows a histogram of the x-z plane of all the showers combined
+		hPosition2D -> Fill(vEntries[i].position[1], vEntries[i].position[0], vEntries[i].energy); 
+
+		// Fill the dEdx histogram  
+		hdEdxValues -> Fill(vEntries[i].energy);
 	}
 
 	// Run the PCA Algorithm
 	runPCA(); // SWAPS THE BASIS VECTORS AROUND! position[0] is now Z... need to fix this
 	
-	//std::cout << "N =: "<< N << std::endl;
 	for (int i = 0; i < N; i++) {
 		// Fills a 2D hist for the Z and X coordinates with thier energy after PCA algorithm
 		hPosition2DPCA->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].position[(vEntries[i].primInd+1)%2], vEntries[i].energy); // (pos.[0],pos.[1],E) 
-		//std::cout<< "vEntries[i].position[0]: "<< vEntries[i].position[0] << "    Energy: " << vEntries[i].energy <<  std::endl;
 
 		//Used for calculating the moliere radius
 		hPerpDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy); // (abs(X),E) 
 
 		//hPerpDist_All->Fill(std::abs(vEntries[i].position[1]), vEntries[i].energy); // Moliere calculation for Reco data
 		
-		
 		// Fills histogram as a function of z and plots against energy
 		hEnergyProfilePCA->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy); 
 	}
 	 
-
 	// clear PCA entries so can run again for SOSA algorithm
 	clearDataEntries(false);
 	
@@ -990,76 +999,15 @@ void MolRadReco::analyze(art::Event const & event)
 	hPerpDist->Reset(); 		          // Reset the variable for use with the SOSA algorithm 
 	
 	
-	// **************************************** end PCA ****************************************
-	// * ***************************************begin SOSA ****************************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o end PCA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o begin SOSA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
-	
-	// event-specific histograms
+	// The energy sum of the resonstruction
 	dEnergySum = 0.;
 	
+	// Run the reconstruction algorithm 
+	dEnergySum = GetRecoXYZE(event, dEnergySum ); 
 
-	//### This is a copy and paste of the algorithm used for PCA 
-	// loop over hit handles
-	// loop over hit handles (chooses the right event number to run)
-	for(std::vector<std::string>::const_iterator hhn = fHitProducerLabel.begin(); hhn != fHitProducerLabel.end(); ++hhn) { // hits are stored un fHitProducer Label for each event
-		event.getByLabel(*hhn, hitHandle); // event comes from the input of the function and getByLabel grabs the info
-
-		// if successful at getting hit handle
-		if(!(hitHandle.failedToGet())) {
-			
-			// Loop over hits in said event 
-			for(auto hit = hitHandle -> begin(); hit != hitHandle -> end(); ++hit) {
-				
-				// if hit is in collection plane
-				if(fGeometry -> SignalType(hit -> Channel()) == geo::kCollection) {
-					
-					// Add hit coordinates to a vector
-					geo::PlaneID plane_id = (hit -> WireID()).asPlaneID();
-
-					TVectorD vHitPos(2);	// Create a vector of size 2 for storing the hits in the x and z coordinates
-					// X [contains the stored hit positions]
-					vHitPos[0] = detprop -> ConvertTicksToX((double) hit -> PeakTime(), plane_id) - 102.5;
-					
-					// Z [contains the stored hit positions with a geometrical factor conversion for wire plane spacing ]
-					// -263 for shifting channel
-					vHitPos[1] = ((double) hit -> Channel() - 10440) * pitch; 
-					
-					// Make conversion of hits from ADC*Ticks to MeV/cm 
-					
-					double T0 = 0; // Initial start time
-					double dEdx = 0; // In MeV/cm
-					double dE = 0; 
-					
-					// Calls dEdx function and returns the conversion in MeV/cm based on area of hit
-					dEdx = fCalorimetryAlg.dEdx_AREA(*hit,pitch, T0)  ; 
-					
-					// Look for unusually large dEdx values and replace with the previous value to correct
-                    if(hit->Integral() > 1000){ 
-						
-						// Use a modified calibration for dEdx
-						dEdx = 0.007484 * hit->Integral() + -.3594; 	
-			
-					}
-				
-					// Convert the dE/dx value to dE by multiplying by dx = 0.4cm/cos(60);
-					dE = dEdx * pitch;
-					
-					// calculate energy sum
-					dEnergySum += dE; // Sum of all hit energies
-
-					// creates a struct entry which contains the energy and vHitPos (Z,X positions of the hits)
-					addDataEntry(dE, vHitPos);     
-
-					//std::cout << "Zpos\t"<< vHitPos[1] << "   "  << "Xpos\t"<< vHitPos[0]<< "  dE\t" << dE  << std::endl;
-
-				} // End condition if in collection plane
-
-			} // End loop over all hits 
-
-		} // End condition of failed hithandle
-
-	} // End Loop over hit handles
-	
 	// Run the SOSA algorithm
 	runSOSA(30.); // Enter the length of track to align up to was 30.
 	
@@ -1067,12 +1015,14 @@ void MolRadReco::analyze(art::Event const & event)
 	double dMolRad2DHitSOSA = 0.;
 	
 	if (N != 0) {
-		//std::cout << N << std::endl;
 		for (int i = 0; i < N; i++) {
+			
 			// Fills a 2D hist for the Z and X coordinates with thier energy after SOSA algorithm
 			hPosition2DSOSA->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].position[(vEntries[i].primInd+1)%2], vEntries[i].energy);  
+			
 			// Used for calculating the moliere radius
 			hPerpDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy); 
+			
 			//hEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy); // plot the SOSA energy profile
 
 			//hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
@@ -1089,9 +1039,9 @@ void MolRadReco::analyze(art::Event const & event)
 		bUseSOSA = false;
 	}
 	
-	// **************** END RECO CALCULATIONS *****************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o END RECO CALCULATIONS o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
-	// **************** BEGIN TRUTH CALCULATIONS *********************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o BEGIN TRUTH CALCULATIONS o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
 	// create vector of simulated channels
 	//typedef std::vector<const sim::SimChannel*> simChannelVec_t; //Alias for a type name
@@ -1101,9 +1051,6 @@ void MolRadReco::analyze(art::Event const & event)
 	// create vector of particles involved in event
 	art::Handle< std::vector<simb::MCParticle> > particleHandle;
 	event.getByLabel(fSimulationProducerLabel, particleHandle);
-
-
-	
 	
 	double dEnergyInitial = 0.;
 	// find primary particle to get initial truth energy
@@ -1124,11 +1071,10 @@ void MolRadReco::analyze(art::Event const & event)
 	}
 	
 
-	// *** *************BEGIN 2D PCA <Truth> *****************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o BEGIN 2D PCA <Truth> o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
+
 	dEnergyDepositedSum = GetTruthXYZE(simChannelVec, false, event.event()); // Get the Truth X, Y Z and Energy for the event
 	DataTree->Fill(); // Fill the ttree
-
-
 
 	// Calculate the moliere radius for Truth in 2D without alignment, This only makes sense for straight projected showers. 
 	for (unsigned int i = 0; i < vEntries.size(); i++) { // fill the perp dist histogram
@@ -1168,8 +1114,8 @@ void MolRadReco::analyze(art::Event const & event)
 	
 	
 	
-	// *************************** end 2D truth PCA ***************************
-	// *************************** start 2D truth SOSA ***************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oend 2D truth PCA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o start 2D truth SOSA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
 	
 	dEnergyDepositedSum = 0. ; // Re-Initialize
@@ -1220,8 +1166,8 @@ void MolRadReco::analyze(art::Event const & event)
 	
 	hPCASOSAAngle->Fill(180.*std::acos(vSOSA[0]*vPCA[0] + vSOSA[1]*vPCA[1])/PI);
 	
-	// ***************************** END 2D SOSA ******************************************
-	// ******************* *** BEGIN 3D PCA *****************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o END 2D SOSA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o BEGIN 3D PCA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
 	dEnergyDepositedSum = 0. ; // Re-Initialize
 	dEnergyDepositedSum = GetTruthXYZE(simChannelVec, true, event.event()); // Get the Truth X, Y Z and Energy for the event
@@ -1262,7 +1208,7 @@ void MolRadReco::analyze(art::Event const & event)
 	hPerpDist->Reset(); 
 	
 
-	//*******************************************************************
+	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	
 	// Test Histograms
 	//std::cout << hTrueRadialDist3D.Integral(0, iNbins + 1)/dEnergyInitial << std::endl;
@@ -1284,7 +1230,7 @@ void MolRadReco::analyze(art::Event const & event)
 	
 	 
 }
-
+// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 //runs at the end once
 void MolRadReco::endJob()
 {
@@ -1392,12 +1338,10 @@ void MolRadReco::endJob()
 	std::cout << "IntegralTrue= "<< hTrueEnergyProfile -> Integral() << std::endl; // Output the number of entries 
 	
 	// Fit the true energy longitudinal profle
-	TrueEnergyProfileFit -> SetParLimits(0,  1,  10);   // ALPHA
-    TrueEnergyProfileFit -> SetParLimits(1,  1,  1e7);  // AMP
-    TrueEnergyProfileFit -> SetParLimits(2,  0,  100);  // MU
-    TrueEnergyProfileFit -> SetParLimits(3,  1,  100);  // THETA
-
-
+	TrueEnergyProfileFit -> SetParLimits(0,  1,  6);   // ALPHA
+    TrueEnergyProfileFit -> SetParLimits(1,  1,  1e4);  // AMP
+    TrueEnergyProfileFit -> SetParLimits(2,  0,  30);  // MU
+    TrueEnergyProfileFit -> SetParLimits(3,  1,  30);  // THETA
 	hTrueEnergyProfile->Fit("TrueEnergyProfileFit","R"); 
 	TrueEnergyProfileFit = hTrueEnergyProfile->GetFunction("TrueEnergyProfileFit");
 
@@ -1515,26 +1459,26 @@ void MolRadReco::endJob()
 
 	// NOTE CHANGE xmin if changing h
 	for (double k = 0; k < integralimit; k+=0.1){
-	//xmin = -1 * k; // 2D
-	xmin =0;  // 3D
-	xmax = k ;
+		//xmin = -1 * k; // 2D
+		xmin =0;  // 3D
+		xmax = k ;
 
-	bmin = axis->FindBin(xmin); 
-	bmax = axis->FindBin(xmax); 
+		bmin = axis->FindBin(xmin); 
+		bmax = axis->FindBin(xmax); 
 
 
-	integral_range = h->Integral(bmin,bmax);
-	integral_range -= h->GetBinContent(bmin) * ( xmin - axis->GetBinLowEdge(bmin) ) / axis->GetBinWidth(bmin);
-	integral_range -= h->GetBinContent(bmax) * ( axis->GetBinUpEdge(bmax)- xmax) / axis->GetBinWidth(bmax);
+		integral_range = h->Integral(bmin,bmax);
+		integral_range -= h->GetBinContent(bmin) * ( xmin - axis->GetBinLowEdge(bmin) ) / axis->GetBinWidth(bmin);
+		integral_range -= h->GetBinContent(bmax) * ( axis->GetBinUpEdge(bmax)- xmax) / axis->GetBinWidth(bmax);
 
-	if (integral_range >= 0.9*integral_total) {
-		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-		std::cout << "Integral range = " << integral_range << "\t Total Integral = " << integral_total << "\tMoliereRadius = " << k << std::endl;
-	    std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-		break; 
-	}
+		if (integral_range >= 0.9*integral_total) {
+			std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
+			std::cout << "Integral range = " << integral_range << "\t Total Integral = " << integral_total << "\tMoliereRadius = " << k << std::endl;
+			std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
+			break; 
+		}
 
-	if (k == integralimit) std::cout <<  "REACHED LIMIT OF RANGE" << std::endl;
+		if (k == integralimit) std::cout <<  "REACHED LIMIT OF RANGE" << std::endl;
 
 	}
   
