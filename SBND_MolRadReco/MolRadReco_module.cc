@@ -122,120 +122,71 @@ private:
 
 	// Declare member data here.
 	// parameters from the .fcl file.
-	std::string fSimulationProducerLabel;		// The name of the producer that tracked simulated particles through the detector
+	std::string fSimulationProducerLabel;			// The name of the producer that tracked simulated particles through the detector
 	std::vector<std::string> fHitProducerLabel;     // The name of the producer that created hits
+	art::ServiceHandle<geo::Geometry> fGeometry;	// pointer to Geometry service
+	calo::CalorimetryAlg  fCalorimetryAlg;          // Calorimetry Alg to convert to ADC*Ticks to dEdx
+	//cluster::ClusterParamsAlg  fClusterParamsAlg;     // Cluster params alg implementaion. 
 	
-	TGraph* TruthRecoScat;             		// Scatterplot of truth vs reco+correction energy
-
-	TH2D* hPosition2D;			        	// Shows a histogram of the x-z plane of all the showers combined
-	TH2D* hPosition2DSOSA;			        // 2D position after Start Of Shower Alignment algorithm
-	TH2D* hPosition2DPCA;			        // 2D position after the Principal Component Analysis algorithm
-	
-	TH3D* hTruePosition3D;	                // 3D position
-	TH3D* hTruePosition3DPCA;		        // 3D position after Principal Component Analysis
-	TH2D* hTruePosition2D;				
-	TH2D* hTruePosition2DSOSA;
-	TH2D* hTruePosition2DPCA;
-	TH1D* hEnergyDetected;				 	// Total amount of energy detected in an event
+	// Position Histograms
+	TH2D* hPosition2D, *hPosition2DSOSA, *hPosition2DPCA, *hTruePosition2D, *hTruePosition2DSOSA, *hTruePosition2DPCA;
 	
 	// Energy Profiles
-	TH1D* hEnergyProfilePCA;				 // Energy as a function of Z (energy profile) PCA Axis
-	TH1D* hEnergyProfile;					 // Energy profile, no axis
-	TH1D* hTrueEnergyProfile;				 // ^^^ but for truth information
-	TH1D* hTrueEnergyProfileX; 				 // True energy profile in the x direction
-	TH1D* hTrueEnergyProfileR; 				 // True energy profile in the radial direction
+	TH1D* hEnergyProfilePCA, *hEnergyProfile, *hTrueEnergyProfile, *hTrueEnergyProfileX, *hTrueEnergyProfileR;
 
-	// Fits	
-	//TF1* TProfFit;  						// Fitting function to the transverse energy profile. 
-	//TF1* TProfFit = new TF1("TProfFit","gaus(0)+gaus(3)",-20., 20.); // Fit function for energy prifile
-	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
-	TF1* TProfFit_Radial = new TF1("TProfFit_Radial"," landau ",0., 20.); // Fit function for energy prifile
-	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[AMP]* ROOT::Math::gamma_pdf(x , [ALPHA] , [THETA], [MU]) ",8., 250.); // Fit function for energy prifile in longitudinal direction
-	//TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "landau",0., 250.); // Fit function for energy prifile in longitudinal direction
+	// Internal Histograms
+	TH1D* hTrueEnergyProfileR_test = new TH1D("hTrueEnergyProfileR_test", "Title", 1000,0.,100.);
 
 	// Moliere Radius
-	TH1D* hMolRadHitPCA;			  	 
-	TH1D* hMolRadHitSOSA;
-	TH1D* hMolRadTruthPCA2D;
-	TH1D* hMolRadTruthSOSA2D;
-	TH1D* hMolRadTruthPCA3D;
-
-	TH1D* hMolRadTruth2D; 
-	TH1D* hMolRadTruth3D;
+	TH1D* hMolRadHitPCA, *hMolRadHitSOSA, *hMolRadTruthPCA2D, *hMolRadTruthSOSA2D, *hMolRadTruthPCA3D, *hMolRadTruth2D, *hMolRadTruth3D;
 	
 	// Moliere Radius Correlation plots
-	TH2D* hMolRadCorrelation2Dh2Dt;			
-	TH2D* hMolRadCorrelation2Dh3DtPCA;
-	TH2D* hMolRadCorrelation2Dh3DtSOSA;
-	TH2D* hMolRadCorrelation2Dt3Dt;
-	TGraph* gCorr_2Dt_3Dt;				// TGraph for 2D truth vs 3D truth for conversion factor
-	TH2D* hMolRadCorrelationSOSA2Dh2Dt;
+	TH2D* hMolRadCorrelation2Dh2Dt, *hMolRadCorrelation2Dh3DtPCA, *hMolRadCorrelation2Dh3DtSOSA, *hMolRadCorrelation2Dt3Dt, *hMolRadCorrelationSOSA2Dh2Dt;
+	
+	TGraph* gCorr_2Dt_3Dt;	// TGraph for 2D truth vs 3D truth for conversion factor
 	
 	// Normalised Correlation Plots
-	TH2D* hMolRadCorrelation2Dh2DtNorm;		 
-	TH2D* hMolRadCorrelation2Dh3DtPCANorm;
-	TH2D* hMolRadCorrelation2Dh3DtSOSANorm;
-	TH2D* hMolRadCorrelation2Dt3DtNorm;
-	TH2D* hMolRadCorrelationSOSA2Dh2DtNorm;
+	TH2D* hMolRadCorrelation2Dh2DtNorm, *hMolRadCorrelation2Dh3DtPCANorm, *hMolRadCorrelation2Dh3DtSOSANorm, *hMolRadCorrelation2Dt3DtNorm, *hMolRadCorrelationSOSA2Dh2DtNorm;
 	
-	TH1D* hPCASOSAAngle;				// for debugging 3D PCA
-	TH1D* hEnergyFraction;				// for seeing if full Mol Rad calculation is feasible
-	TH1D* hMolRadConvertedPCA;			// test output histogram for converted Mol. Rad. values
-	
-	TH1D* hdEdxValues;					// Histogram of the dEdx values for a muon for energy calibration check
+	// Other Graphs
+	TH1D* 	hPCASOSAAngle;					// for debugging 3D PCA
+	TH1D*	hEnergyFraction;				// for seeing if full Mol Rad calculation is feasible
+	TH1D* 	hMolRadConvertedPCA;			// test output histogram for converted Mol. Rad. values	
+	TH1D* 	hdEdxValues;					// Histogram of the dEdx values for a muon for energy calibration check
+	TGraph* gECalScat; 						// Scatter plot of dEdx vs dQdx for energy calibration
+	TF1* 	ECalScatFit; 					// Fit function for the ECal Scat graph
+	TH2D* 	hERecoTruthScat; 				// Scatter plot of the reco to truth energy (muons only)
+	TF1* 	TruthRecoScatFit;               // Fit function for truth reco scatter plot
+	TH1D* 	hERecoTruthDiff; 				// Histogram of the difference between reco and truth energy
+	TF1* 	ERecoTruthDiffFit;              // Fit for reco-truth difference.
+	TH1D* 	hEnergyDetected;				// Total amount of energy detected in an event
+	TGraph* TruthRecoScat;             		// Scatterplot of truth vs reco+correction energy
 
-	TGraph* gECalScat; 				    // Scatter plot of dEdx vs dQdx for energy calibration
-	TF1*    ECalScatFit; 				// Fit function for the ECal Scat graph
-
-	TH2D* hERecoTruthScat; 				// Scatter plot of the reco to truth energy (muons only)
-	TF1* TruthRecoScatFit;              // Fit function for truth reco scatter plot
-
-	TH1D* hERecoTruthDiff; 				// Histogram of the difference between reco and truth energy
-	TF1* ERecoTruthDiffFit;             // Fit for reco-truth difference.
-
-	calo::CalorimetryAlg  fCalorimetryAlg;          // Calorimetry Alg to convert to ADC*Ticks to dEdx
-
-	//cluster::ClusterParamsAlg  fClusterParamsAlg;   // Cluster params alg implementaion. 
-	
-	// other misc. objects
-	art::ServiceHandle<geo::Geometry> fGeometry;	// pointer to Geometry service
-	double pitch = 0.3 ;	        // 3 mm wire spacing 60 degree orientation
-	double dEnergySumTotal;		                // total energy over all events
-	
-	// To store the hit position and energy
-	std::vector<entry> vEntries;
+	// Other variables needed	
+	double pitch = 0.3 ;	        		// 3 mm wire spacing 60 degree orientation
+	double dEnergySumTotal;		        	// total energy over all events
+	double dEnergyDepositedSum; 
+	double PCA_E_Total, Truth_E_Total;
+	std::vector<double> vdQdx, vdEdx; 		// Vectors for making the scatter plot of dQ/dx against dE/dx
+	std::vector<entry> vEntries; 			// To store the hit position and energy	
 
 	// typedefs
 	typedef TMatrixT<double> TMatrixD;
 	
-	double dEnergyDepositedSum; 
+	std::vector<double> RecoEnergyVector, TruthEnergyVector;
 
-	std::vector<double> RecoEnergyVector;
-	std::vector<double> TruthEnergyVector;
-
-	//TTree Declaration and Variables to add
+	// TTree Variables
 	TTree* DataTree; 
-	// Declare analysis variables
     int run, subrun, evt;
-    std::vector<double> TruthEnergyDeposits;
-    std::vector<double> TruthZPos;
-    std::vector<double> TruthXPos;
+    std::vector<double> TruthEnergyDeposits, TruthZPos, TruthXPos;
+    //std::vector<double> Reco_E, Reco_ZPos, Reco_XPos; // Vectors containing Reconstructed parameters
+	//std::vector<double> PCA_XPos, PCA_ZPos; // Vectors containing PCA parameters
 
-    // Vectors containing Reconstructed parameters
-    //std::vector<double> Reco_E;
-    //std::vector<double> Reco_ZPos;
-    //std::vector<double> Reco_XPos;
-
-    // Vectors containing PCA parameters
-    //std::vector<double> PCA_XPos; 
-    //std::vector<double> PCA_ZPos;
-    double PCA_E_Total;
-    double Truth_E_Total; 
-
-	// Vectors for making the scatter plot of dQ/dx against dE/dx
-	std::vector<double> vdQdx;
-	std::vector<double> vdEdx;
-
+	// Fits	
+	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
+	TF1* TProfFit_Radial = new TF1("TProfFit_Radial"," landau ",0., 20.); // Fit function for energy prifile
+	TF1* TrueEnergyProfileFit = new TF1("TrueEnergyProfileFit", "[AMP]* ROOT::Math::gamma_pdf(x , [ALPHA] , [THETA], [MU]) ",8., 250.); // Fit function for energy prifile in longitudinal direction
+	
 };
 
 void MolRadReco::addDataEntry(double energy, TVectorD position) {
@@ -556,7 +507,6 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
 						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
-						hTruePosition3D->Fill(vHitPos[0], vHitPos[1], vHitPos[2], energyDeposit.energy); // fill 3D PCA histogram
 					
 					} else { // 2D case
 						
@@ -744,18 +694,6 @@ void MolRadReco::beginJob() {
 	hPosition2DPCA->GetXaxis()->SetTitle("Along shower axis (cm)");
 	hPosition2DPCA->GetYaxis()->SetTitle("Perpendicular to shower axis (cm)");
 	hPosition2DPCA->GetYaxis()->SetTitleOffset(1.15);
-	
-	hTruePosition3D = tfs->make<TH3D>("trueposition3d","3D Position of Energy Deposits (Sum of all events)",50,0.,45.,50,-20.,20., 50,0.,120.);
-	hTruePosition3D->GetXaxis()->SetTitle("X (cm)");
-	hTruePosition3D->GetYaxis()->SetTitle("Y (cm)");
-	hTruePosition3D->GetZaxis()->SetTitle("Z (cm)");
-	//hTruePosition3D->GetYaxis()->SetTitleOffset(1.15);
-	
-	hTruePosition3DPCA = tfs->make<TH3D>("trueposition3dpca","3D Position of Energy Deposits after PCA (Sum of all events)",50,-20.,20.,50,-20.,20.,50,-60.,60.);
-	hTruePosition3DPCA->GetXaxis()->SetTitle("Perpendicular to shower axis X (cm)");
-	hTruePosition3DPCA->GetYaxis()->SetTitle("Perpendicular to shower axis Y (cm)");
-	hTruePosition3DPCA->GetZaxis()->SetTitle("Along shower axis (cm)");
-	//hTruePosition3DPCA->GetYaxis()->SetTitleOffset(1.15);
 	
 	hTruePosition2D = tfs->make<TH2D>("trueposition2d","2D Position of Energy Deposits (Sum of all events)",200,0.,250.,200,-30.,30.);
 	hTruePosition2D->GetXaxis()->SetTitle("Z (cm)");
@@ -1195,8 +1133,6 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 	N = vEntries.size();
 	for (int i = 0; i < N; i++) {
 		
-		hTruePosition3DPCA->Fill(vEntries[i].position[(vEntries[i].primInd+1)%3], vEntries[i].position[(vEntries[i].primInd+2)%3], vEntries[i].position[vEntries[i].primInd], vEntries[i].energy);
-		
 		hPerpDist->Fill(std::sqrt(std::pow(vEntries[i].position[(vEntries[i].primInd+1)%3], 2) + std::pow(vEntries[i].position[(vEntries[i].primInd+2)%3], 2)), vEntries[i].energy);
 		
 		//hTrueEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy);
@@ -1343,7 +1279,7 @@ void MolRadReco::endJob()
 	//double scale = hTrueEnergyProfile->GetBinContent(hTrueEnergyProfile->GetMaximumBin()); // Scale by the max bin value
 	//hTrueEnergyProfile->Scale (1./scale);
 	Truth_E_Total+=hTrueEnergyProfile -> Integral();
-	hTrueEnergyProfile->Scale (1./fills);
+	//hTrueEnergyProfile->Scale (1./fills);
 	std::cout << "IntegralTrue= "<< hTrueEnergyProfile -> Integral() << std::endl; // Output the number of entries 
 	
 	// Fit the true energy longitudinal profle
@@ -1370,17 +1306,20 @@ void MolRadReco::endJob()
 	TruthRecoScat->Fit("pol1","");
 	TruthRecoScatFit = TruthRecoScat->GetFunction("pol1");
 
-	// **************************Calculate the moliere radius for multiple showers.  ***********************
+	// **************************Calculate the containment for multiple showers.  ***********************
 	double E_total = Truth_E_Total; // Define for truth or reco moliere radius Truth_E_Total for Truth
 	std::cout<<"Total ENERGY: " << E_total << std::endl;
     
 	// Calculate the Moliere Radius over all showers 
 	double Moliere_Radius_All = Containment(E_total, hPerpDist_All, "T");  //R_M
 	double Moliere_Radius_All_Twice = Containment(E_total, hPerpDist_All, "T2"); // 2 * R_M
+	double L_Containment = Containment(E_total, hTrueEnergyProfile, "L"); // Longitudinal Containment
+	
 
 	std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
 	std::cout << "Moliere Radius for all events: " << Moliere_Radius_All << std::endl;
 	std::cout << "Twice the Moliere Radius for all events: " << Moliere_Radius_All_Twice << std::endl;
+	std::cout << "True Longitudinal Profile Containment: " << L_Containment  << std::endl;
 	std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
 
 	//hPerpDist_All->Reset();  // Reset hist for another calculation.
@@ -1431,8 +1370,6 @@ void MolRadReco::endJob()
 	hTrueEnergyProfileX->Fit("TProfFit","R");
 	TProfFit = hTrueEnergyProfileX->GetFunction("TProfFit");
 
-
-
 	// Calculate moliere radius based on the transverse profile x or radial.
 	// NOTE CHANGE xmin if changing h
 	TH1D* h = hTrueEnergyProfileR; //choose histogram
@@ -1473,7 +1410,7 @@ void MolRadReco::endJob()
 		if (k == integralimit) std::cout <<  "REACHED LIMIT OF RANGE" << std::endl;
 
 	}
-  
+
 	clearDataEntries(true); // clear the tree variables
 
 }
