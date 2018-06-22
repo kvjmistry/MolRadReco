@@ -490,7 +490,7 @@ double MolRadReco::Containment(double energySum, TH1D *h, std::string Type) {
 	else if (Type == "L")  Range = 0.95;  	// For Longitudingal Containment	
 
 	// Check if the integral of the charge agrees with the summed energy
-	if (std::abs(1 - (h->Integral(0, iNbins+1)/energySum)) < 0.01) { // calculate integral-to-total-energy ratio (include mean energy deposit energy to convert counts to energy)
+	if (std::abs(1 - (h->Integral(0, iNbins+1)/energySum)) < 0.001) { // calculate integral-to-total-energy ratio (include mean energy deposit energy to convert counts to energy)
 
 		// Calculate Containment up to Range
 		while (dIntegral < Range * energySum) {
@@ -499,7 +499,7 @@ double MolRadReco::Containment(double energySum, TH1D *h, std::string Type) {
 		}
 
 		 //std::cout << "Calculated Moliere Radius in test function: " << h->GetBinLowEdge(iBinUpper) << std::endl;
-		return hPerpDist->GetBinLowEdge(iBinUpper);
+		return h->GetBinLowEdge(iBinUpper);
 
 	} 
 	else {
@@ -1371,31 +1371,19 @@ void MolRadReco::endJob()
 	TruthRecoScatFit = TruthRecoScat->GetFunction("pol1");
 
 	// **************************Calculate the moliere radius for multiple showers.  ***********************
-	int iNbins = hPerpDist_All->GetNbinsX(); // Gets the total number of x-bins for the histogram hPerpDist
-	int iBinUpper = 0;
-	double dIntegral = 0.;
 	double E_total = Truth_E_Total; // Define for truth or reco moliere radius Truth_E_Total for Truth
-
 	std::cout<<"Total ENERGY: " << E_total << std::endl;
+    
+	// Calculate the Moliere Radius over all showers 
+	double Moliere_Radius_All = Containment(E_total, hPerpDist_All, "T");  //R_M
+	double Moliere_Radius_All_Twice = Containment(E_total, hPerpDist_All, "T2"); // 2 * R_M
 
-	
-	// Check if the integral of the charge agrees with the summed energy
-	if (std::abs(1 - (hPerpDist_All->Integral(0, iNbins+1)/E_total)) < 0.001) { // calculate integral-to-total-energy ratio (include mean energy deposit energy to convert counts to energy)
-
-		// Calculate Moliere Radius
-		while (dIntegral < 0.9*E_total) {
-			iBinUpper++;
-			dIntegral = hPerpDist_All->Integral(0, iBinUpper);
-		}
-		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-		std::cout << "Moliere Radius for all events: " << hPerpDist_All->GetBinLowEdge(iBinUpper)<< std::endl;
-		std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
-	} else {
-		std::cout << "Integral and Counted energies do not agree (" << (hPerpDist_All->Integral(0, iNbins+1)/E_total) << ")" << std::endl;
-	}
+	std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
+	std::cout << "Moliere Radius for all events: " << Moliere_Radius_All << std::endl;
+	std::cout << "Twice the Moliere Radius for all events: " << Moliere_Radius_All_Twice << std::endl;
+	std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
 
 	//hPerpDist_All->Reset();  // Reset hist for another calculation.
-
 
 	// Fit the Radial Energy Profile
 	//hTrueEnergyProfileR->Scale(1./hTrueEnergyProfileR->GetBinContent(hTrueEnergyProfileR->GetMaximumBin())); // Scale by the max bin number
@@ -1403,9 +1391,6 @@ void MolRadReco::endJob()
 
 	hTrueEnergyProfileR->Fit("TProfFit_Radial","R");
 	TProfFit = hTrueEnergyProfileR->GetFunction("TProfFit_Radial");
-
-	
-
 
 	// Define and fit the transverse energy profile.
 	// Set fit parameter limits
