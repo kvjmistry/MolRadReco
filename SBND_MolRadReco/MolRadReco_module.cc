@@ -68,7 +68,7 @@
 #define PI 3.14159265
 
 TH1D* hPerpDist;		// For calculating moliere radius
-TH1D* hPerpDist_All; // perpendicular distance for moliere radius of all events
+
 
 // these are for the testing PCA-SOSA angle thing. That can be removed
 TVectorD vSOSA(2);
@@ -126,16 +126,13 @@ private:
 	std::vector<std::string> fHitProducerLabel;     // The name of the producer that created hits
 	art::ServiceHandle<geo::Geometry> fGeometry;	// pointer to Geometry service
 	calo::CalorimetryAlg  fCalorimetryAlg;          // Calorimetry Alg to convert to ADC*Ticks to dEdx
-	//cluster::ClusterParamsAlg  fClusterParamsAlg;     // Cluster params alg implementaion. 
+	//cluster::ClusterParamsAlg  fClusterParamsAlg; // Cluster params alg implementaion. 
 	
 	// Position Histograms
 	TH2D* hPosition2D, *hPosition2DSOSA, *hPosition2DPCA, *hTruePosition2D, *hTruePosition2DSOSA, *hTruePosition2DPCA;
 	
 	// Energy Profiles
 	TH1D* hEnergyProfilePCA, *hEnergyProfile, *hTrueEnergyProfile, *hTrueEnergyProfileX, *hTrueEnergyProfileR;
-
-	// Internal Histograms
-	TH1D* hTrueEnergyProfileR_test = new TH1D("hTrueEnergyProfileR_test", "Title", 1000,0.,100.);
 
 	// Moliere Radius
 	TH1D* hMolRadHitPCA, *hMolRadHitSOSA, *hMolRadTruthPCA2D, *hMolRadTruthSOSA2D, *hMolRadTruthPCA3D, *hMolRadTruth2D, *hMolRadTruth3D;
@@ -181,6 +178,16 @@ private:
     std::vector<double> TruthEnergyDeposits, TruthZPos, TruthXPos;
     //std::vector<double> Reco_E, Reco_ZPos, Reco_XPos; // Vectors containing Reconstructed parameters
 	//std::vector<double> PCA_XPos, PCA_ZPos; // Vectors containing PCA parameters
+
+	// Histograms for calculating the Moliere radius over all events for different cases. 
+	TH1D* hReco_PerpDist_2D_All = new TH1D("hReco_PerpDist_2D_All", "Title", 1000,0.,100.);
+	TH1D* hReco_PerpDist_2D_PCA_All = new TH1D("hReco_PerpDist_2D_PCA_All", "Title", 1000,0.,100.);
+	TH1D* hReco_PerpDist_2D_SOSA_All = new TH1D("hReco_PerpDist_2D_SOSA_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_All = new TH1D("hTruth_PerpDist_2D_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_PCA_All = new TH1D("hTruth_PerpDist_2D_PCA_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_SOSA_All = new TH1D("hTruth_PerpDist_2D_SOSA_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_3D_All = new TH1D("hTruth_PerpDist_3D_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_3D_PCA_All = new TH1D("hTruth_PerpDist_3D_PCA_All", "Title", 1000,0.,100.);
 
 	// Fits	
 	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
@@ -590,11 +597,13 @@ double MolRadReco::GetRecoXYZE(art::Event const & event,  double dEnergySum ){
 					dE = dEdx * pitch;
 					
 					// calculate energy sum
-					dEnergySum += dE; // Sum of all hit energies
+					//dEnergySum += dE; // Sum of all hit energies
 
 					// creates a struct entry which contains the energy and vHitPos (Z,X positions of the hits)
-					addDataEntry(dE, vHitPos);     
-					
+					//addDataEntry(dE, vHitPos);     
+					if (vHitPos[1] > 0. ) {addDataEntry(dE, vHitPos); dEnergySum += dE; } // delete any spurious data points (z<0) and add the entries to the vector
+
+
 					// Add parameters to a vector for a ttree
 					if (event.event()==1){
 						//Reco_E.push_back(dE);
@@ -720,8 +729,6 @@ void MolRadReco::beginJob() {
 	hPerpDist->GetXaxis()->SetTitle("X Distance (cm)");
 	hPerpDist->GetYaxis()->SetTitle("Frequency Density");
 	hPerpDist->GetYaxis()->SetTitleOffset(1.05);
-
-	hPerpDist_All = tfs->make<TH1D>("hPerpDist_All","Perpendicular Distance for all events(should be empty)",1000,0.,500.);
 
 	hMolRadTruth2D = tfs->make<TH1D>("MoliereTruth2D","Moliere Radius Using Truth Information (Straight Only)",200,0.,-5.);
 	hMolRadTruth2D->GetXaxis()->SetTitle("Moliere Radius (cm)");
@@ -890,7 +897,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 	// Make Histograms
 	for (int i = 0; i < N; i++ ) {
 		hEnergyProfile->Fill(vEntries[i].position[1], vEntries[i].energy); //Choose 1 event to look at the energy profile
-		//hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
+		hReco_PerpDist_2D_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
 
 		// Fill 2D histogram (event display like) (Z,X,Energy) Shows a histogram of the x-z plane of all the showers combined
 		hPosition2D -> Fill(vEntries[i].position[1], vEntries[i].position[0], vEntries[i].energy); 
@@ -909,7 +916,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 		//Used for calculating the moliere radius
 		hPerpDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy); // (abs(X),E) 
 
-		//hPerpDist_All->Fill(std::abs(vEntries[i].position[1]), vEntries[i].energy); // Moliere calculation for Reco data
+		hReco_PerpDist_2D_PCA_All->Fill(std::abs(vEntries[i].position[1]), vEntries[i].energy); // Moliere calculation for Reco data
 		
 		// Fills histogram as a function of z and plots against energy
 		hEnergyProfilePCA->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy); 
@@ -922,16 +929,8 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 	double dMolRad2DHitPCA = Containment(dEnergySum, hPerpDist, "T");
 	hMolRadHitPCA->Fill(dMolRad2DHitPCA); // Bins the moliere radius frequency density into a histogram
 	
-	
-	// Try the test moliere radius function
-	//MolRad_Test(dEnergySum, hPerpDist);
-	
-	
-	
 	hPerpDist->Reset(); 		          // Reset the variable for use with the SOSA algorithm 
 	
-	
-
 
 	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o end PCA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 	// o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o begin SOSA o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
@@ -959,7 +958,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 			
 			//hEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy); // plot the SOSA energy profile
 
-			//hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
+			hReco_PerpDist_2D_SOSA_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
 		}
 		
 		// clear SOSA entries
@@ -1013,7 +1012,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 		
 		hPerpDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy); // abs(x), E
 		
-		hPerpDist_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere radius calculation for all events
+		hTruth_PerpDist_2D_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere radius calculation for all events
 		
 		hTrueEnergyProfileX->Fill(vEntries[i].position[0] , vEntries[i].energy); // Fill the truth energy profile histogram for the x direction. uncorrected now
 
@@ -1039,7 +1038,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 		
 		hTrueEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy); // Fill the truth energy profile hostogram
 		
-		//hPerpDist_All->Fill(std::abs(vEntries[i].position[1]), vEntries[i].energy); // Moliere radius calculation for all events
+		hTruth_PerpDist_2D_PCA_All->Fill(std::abs(vEntries[i].position[1]), vEntries[i].energy); // Moliere radius calculation for all events
 	}
 	
 	// clear PCA entries
@@ -1071,6 +1070,8 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 			
 			hPerpDist->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // fills histogram with transverse distance of each energy deposit weighted by the energy
 			
+			hTruth_PerpDist_2D_SOSA_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy);
+
 			//hTotalXDist->Fill(std::abs(vEntries[i].position[(vEntries[i].primInd+1)%2]), vEntries[i].energy);
 			
 			//hEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy);
@@ -1118,7 +1119,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 		
 		hTrueEnergyProfileR->Fill(std::sqrt( std::pow(vEntries[i].position[0] ,2) + std::pow(vEntries[i].position[1] ,2) )   , vEntries[i].energy); // Fill the truth energy profile histogram for the radial direction. uncorrected now
 		
-		//hPerpDist_All->Fill(std::sqrt(std::pow(vEntries[i].position[0] , 2) + std::pow(vEntries[i].position[1], 2)), vEntries[i].energy); // Moliere radius calculation for all events
+		hTruth_PerpDist_3D_All->Fill(std::sqrt(std::pow(vEntries[i].position[0] , 2) + std::pow(vEntries[i].position[1], 2)), vEntries[i].energy); // Moliere radius calculation for all events
 	}
 
 	double dMolRad3DTruth = Containment(dEnergyDepositedSum, hPerpDist, "T"); // Calculate the moliere radius
@@ -1137,7 +1138,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 		
 		//hTrueEnergyProfile->Fill(vEntries[i].position[vEntries[i].primInd], vEntries[i].energy);
 		
-		//hPerpDist_All->Fill(std::sqrt(std::pow(vEntries[i].position[(vEntries[i].primInd+1)%3], 2) + std::pow(vEntries[i].position[(vEntries[i].primInd+2)%3], 2)), vEntries[i].energy);// Moliere radius calculation for all events
+		hTruth_PerpDist_3D_PCA_All->Fill(std::sqrt(std::pow(vEntries[i].position[(vEntries[i].primInd+1)%3], 2) + std::pow(vEntries[i].position[(vEntries[i].primInd+2)%3], 2)), vEntries[i].energy);// Moliere radius calculation for all events
 		
 	}
 	
@@ -1311,18 +1312,37 @@ void MolRadReco::endJob()
 	std::cout<<"Total ENERGY: " << E_total << std::endl;
     
 	// Calculate the Moliere Radius over all showers 
-	double Moliere_Radius_All = Containment(E_total, hPerpDist_All, "T");  //R_M
-	double Moliere_Radius_All_Twice = Containment(E_total, hPerpDist_All, "T2"); // 2 * R_M
-	double L_Containment = Containment(E_total, hTrueEnergyProfile, "L"); // Longitudinal Containment
+	//double Moliere_Radius_All = Containment(E_total, hPerpDist_All, "T");  //R_M
+	//double Moliere_Radius_All_Twice = Containment(E_total, hPerpDist_All, "T2"); // 2 * R_M
+	double L_Containment = Containment(hTrueEnergyProfile->Integral(), hTrueEnergyProfile, "L"); // Longitudinal Containment
+
+	double hReco_PerpDist_2D_Rm = 	    Containment(	hReco_PerpDist_2D_All->Integral()      ,hReco_PerpDist_2D_All      ,"T");
+	double hReco_PerpDist_2D_PCA_Rm =   Containment(	hReco_PerpDist_2D_PCA_All->Integral()  ,hReco_PerpDist_2D_PCA_All  ,"T");
+	double hReco_PerpDist_2D_SOSA_Rm =  Containment(	hReco_PerpDist_2D_SOSA_All->Integral() ,hReco_PerpDist_2D_SOSA_All ,"T");
+	double hTruth_PerpDist_2D_Rm = 	    Containment(	hTruth_PerpDist_2D_All->Integral()     ,hTruth_PerpDist_2D_All     ,"T");
+	double hTruth_PerpDist_2D_PCA_Rm =  Containment(	hTruth_PerpDist_2D_PCA_All->Integral() ,hTruth_PerpDist_2D_PCA_All ,"T");
+	double hTruth_PerpDist_2D_SOSA_Rm = Containment(	hTruth_PerpDist_2D_SOSA_All->Integral(),hTruth_PerpDist_2D_SOSA_All,"T");
+	double hTruth_PerpDist_3D_Rm = 		Containment(	hTruth_PerpDist_3D_All->Integral()     ,hTruth_PerpDist_3D_All     ,"T");
+	double hTruth_PerpDist_3D_PCA_Rm =  Containment(	hTruth_PerpDist_3D_PCA_All->Integral() ,hTruth_PerpDist_3D_PCA_All ,"T");
+
 	
 
 	std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-	std::cout << "Moliere Radius for all events: " << Moliere_Radius_All << std::endl;
-	std::cout << "Twice the Moliere Radius for all events: " << Moliere_Radius_All_Twice << std::endl;
+	//std::cout << "Moliere Radius for all events: " << Moliere_Radius_All << std::endl;
+	//std::cout << "Twice the Moliere Radius for all events: " << Moliere_Radius_All_Twice << std::endl;
 	std::cout << "True Longitudinal Profile Containment: " << L_Containment  << std::endl;
+	std::cout << "Moliere Radius Reco 2D : " 	  << hReco_PerpDist_2D_Rm << std::endl;
+	std::cout << "Moliere Radius Reco 2D PCA : "  << hReco_PerpDist_2D_PCA_Rm << std::endl;
+	std::cout << "Moliere Radius Reco 2D SOSA: "  << hReco_PerpDist_2D_SOSA_Rm << std::endl;
+	std::cout << "Moliere Radius Truth 2D : "	  << hTruth_PerpDist_2D_Rm << std::endl;
+	std::cout << "Moliere Radius Truth 2D PCA : " << hTruth_PerpDist_2D_PCA_Rm << std::endl;
+	std::cout << "Moliere Radius Truth 2D SOSA: " << hTruth_PerpDist_2D_SOSA_Rm << std::endl;
+	std::cout << "Moliere Radius Truth 3D : " 	  << hTruth_PerpDist_3D_Rm << std::endl;
+	std::cout << "Moliere Radius Truth 3D PCA : " << hTruth_PerpDist_3D_PCA_Rm  << std::endl;
+
 	std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
 
-	//hPerpDist_All->Reset();  // Reset hist for another calculation.
+
 
 	// Fit the Radial Energy Profile
 	//hTrueEnergyProfileR->Scale(1./hTrueEnergyProfileR->GetBinContent(hTrueEnergyProfileR->GetMaximumBin())); // Scale by the max bin number
