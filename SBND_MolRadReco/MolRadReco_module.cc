@@ -67,17 +67,11 @@
 
 #define PI 3.14159265
 
-TH1D* hPerpDist;		// For calculating moliere radius
+// Global Definitions
+TVectorD vSOSA(2), vPCA(2);	// Axis Angles
+typedef std::vector<const sim::SimChannel*> simChannelVec_t; // SimChannel Vector
 
-
-// these are for the testing PCA-SOSA angle thing. That can be removed
-TVectorD vSOSA(2);
-TVectorD vPCA(2);
-int fills = 0;
-typedef std::vector<const sim::SimChannel*> simChannelVec_t; //Alias for a type name
-int HistFill = 999; // Bool to decide if to fill a histogram or not (avoids overfilling truth position 2D)
-
-//* This structure stores the energy,position and index of events
+// This structure stores the energy,position and index of events
 class entry {
 public:
 	TVectorD position;
@@ -110,17 +104,15 @@ public:
   void endJob() override;
   
   // custom functions
-  void addDataEntry(double energy, TVectorD position); // creates a struct of type entry which contains energy, position and index. 
-  void clearDataEntries(bool cleartree);
-  void runPCA();		// principal component analysis
-  void runSOSA(double cm);	// start of shower alignment
-  double Containment(double energySum, TH1D *h , std::string Type); // Funtion that calculates the containment in the Trans and Longitudinal Directions
+  void   addDataEntry(double energy, TVectorD position); 					 // Creates a struct of type entry which contains energy, position and index. 
+  void   clearDataEntries(bool cleartree);
+  void   runPCA();															 // Principal Component Analysis
+  void   runSOSA(double cm);												 // Start of Shower Alignment
+  double Containment(double energySum, TH1D *h , std::string Type); 		 // Funtion that calculates the containment in the Trans and Longitudinal Directions
   double GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int event); // Function that gets the truth quantities of a hit and pushes them into a vector
-  double GetRecoXYZE(art::Event const & event, double dEnergySum ); // Function that gets the reconstructed quantities of a hit and pushes them into a vector
+  double GetRecoXYZE(art::Event const & event, double dEnergySum ); 		 // Function that gets the reconstructed quantities of a hit and pushes them into a vector
 
 private:
-
-	// Declare member data here.
 	// parameters from the .fcl file.
 	std::string fSimulationProducerLabel;			// The name of the producer that tracked simulated particles through the detector
 	std::vector<std::string> fHitProducerLabel;     // The name of the producer that created hits
@@ -158,19 +150,27 @@ private:
 	TF1* 	ERecoTruthDiffFit;              // Fit for reco-truth difference.
 	TH1D* 	hEnergyDetected;				// Total amount of energy detected in an event
 	TGraph* TruthRecoScat;             		// Scatterplot of truth vs reco+correction energy
+	TH1D* 	hPerpDist;						// Histogram used for calculating moliere radius
 
-	// Other variables needed	
-	double pitch = 0.3 ;	        		// 3 mm wire spacing 60 degree orientation
+	// Doubles	
+	double pitch = 0.3 ;	        		// 3 mm wire spacing in SBND
 	double dEnergySumTotal;		        	// total energy over all events
 	double dEnergyDepositedSum; 
-	double PCA_E_Total, Truth_E_Total;
-	std::vector<double> vdQdx, vdEdx; 		// Vectors for making the scatter plot of dQ/dx against dE/dx
-	std::vector<entry> vEntries; 			// To store the hit position and energy	
+	double PCA_E_Total= 0.;
+	double Truth_E_Total;
 
-	// typedefs
+	// Integers
+	int fills = 0;	
+	int HistFill = 999; 					// Number to decide if to fill a histogram or not (avoids overfilling truth position 2D)
+
+	// Type Definitions
 	typedef TMatrixT<double> TMatrixD;
 	
+	// Vectors
 	std::vector<double> RecoEnergyVector, TruthEnergyVector;
+	std::vector<double> vdQdx, vdEdx; 		// Vectors for making the scatter plot of dQ/dx against dE/dx
+	std::vector<entry> 	vEntries; 			// To store the hit position and energy	
+	
 
 	// TTree Variables
 	TTree* DataTree; 
@@ -180,14 +180,14 @@ private:
 	//std::vector<double> PCA_XPos, PCA_ZPos; // Vectors containing PCA parameters
 
 	// Histograms for calculating the Moliere radius over all events for different cases. 
-	TH1D* hReco_PerpDist_2D_All = new TH1D("hReco_PerpDist_2D_All", "Title", 1000,0.,100.);
-	TH1D* hReco_PerpDist_2D_PCA_All = new TH1D("hReco_PerpDist_2D_PCA_All", "Title", 1000,0.,100.);
-	TH1D* hReco_PerpDist_2D_SOSA_All = new TH1D("hReco_PerpDist_2D_SOSA_All", "Title", 1000,0.,100.);
-	TH1D* hTruth_PerpDist_2D_All = new TH1D("hTruth_PerpDist_2D_All", "Title", 1000,0.,100.);
-	TH1D* hTruth_PerpDist_2D_PCA_All = new TH1D("hTruth_PerpDist_2D_PCA_All", "Title", 1000,0.,100.);
-	TH1D* hTruth_PerpDist_2D_SOSA_All = new TH1D("hTruth_PerpDist_2D_SOSA_All", "Title", 1000,0.,100.);
-	TH1D* hTruth_PerpDist_3D_All = new TH1D("hTruth_PerpDist_3D_All", "Title", 1000,0.,100.);
-	TH1D* hTruth_PerpDist_3D_PCA_All = new TH1D("hTruth_PerpDist_3D_PCA_All", "Title", 1000,0.,100.);
+	TH1D* hReco_PerpDist_2D_All = 		new TH1D("hReco_PerpDist_2D_All", "Title",		1000,0.,100.);
+	TH1D* hReco_PerpDist_2D_PCA_All = 	new TH1D("hReco_PerpDist_2D_PCA_All", "Title",  1000,0.,100.);
+	TH1D* hReco_PerpDist_2D_SOSA_All = 	new TH1D("hReco_PerpDist_2D_SOSA_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_All = 		new TH1D("hTruth_PerpDist_2D_All", "Title", 	1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_PCA_All = 	new TH1D("hTruth_PerpDist_2D_PCA_All", "Title", 1000,0.,100.);
+	TH1D* hTruth_PerpDist_2D_SOSA_All = new TH1D("hTruth_PerpDist_2D_SOSA_All", "Title",1000,0.,100.);
+	TH1D* hTruth_PerpDist_3D_All = 		new TH1D("hTruth_PerpDist_3D_All", "Title", 	1000,0.,100.);
+	TH1D* hTruth_PerpDist_3D_PCA_All = 	new TH1D("hTruth_PerpDist_3D_PCA_All", "Title", 1000,0.,100.);
 
 	// Fits	
 	TF1* TProfFit = new TF1("TProfFit","[2]*[0]/([1]*(x-[3])*(x-[3]) + [0]*[0]) + gaus(4) ",10., 10.); // Lorenzian
@@ -246,23 +246,21 @@ void MolRadReco::clearDataEntries(bool cleartree) {
 }
 
 void MolRadReco::runPCA() {
-	// initial checks
 	
-	// define stuff
+	// Definitions
 	int dim = vEntries[0].position.GetNoElements(); // Number of dimentions - 2 or 3
 	int N = vEntries.size(); 
-	
 	int iPrimaryIndex;
-	// vectors
+	double dEnergySqSum = 0;
+	
+	// Vectors
 	TVectorD vMean(dim);
 	TVectorD vCoords(dim);
 	TVectorD vEigval(dim);
 	TMatrixD mEigvec(dim, dim); // The largest eigenvector points in the direction of the PCA axis (2x2 matrix)
 	TMatrixD mCovariance(dim, dim);
 	mCovariance = 0.;
-	// misc
-	double dEnergySqSum = 0;
-	
+		
 	// loop 1 - calculate means, energy (sq) sums
 	for(int i = 0; i < N; i++) {
 		// calculate mean positions
@@ -630,10 +628,7 @@ void MolRadReco::beginJob() {
 	//(var, title, nxbins,xlow,xhigh,nybins,ylow,yhigh) TH2D Specifyer
 
 	//dEdx Histogram
-	hdEdxValues = tfs->make<TH1D>("dEdxValues","dEdx of Hits",60,0,25);	
-	hdEdxValues->GetXaxis()->SetTitle("dEdx (Mev/cm)");
-	hdEdxValues->GetYaxis()->SetTitle("Events");
-	hdEdxValues->GetYaxis()->SetTitleOffset(1.15);
+	hdEdxValues = tfs->make<TH1D>("dEdxValues","dEdx of Hits; dEdx [Mev/cm]; Events",60,0,25);	
 
 	// Energy Calibration scatter plot
 	gECalScat = tfs->makeAndRegister<TGraph>("gECalScat", "EcalScat;dQdx [E/cm]; dEdx [MeV/cm]");
@@ -646,193 +641,110 @@ void MolRadReco::beginJob() {
 	TruthRecoScat->SetMarkerSize(6);
 	TruthRecoScat->SetLineWidth(0);
 
-	// ***************************Energy Profile Plots*********************************
-	// Notes: ROOT TMath has a gamma_pdf() function which can be used to fit the longitudinal distibution.
-
+	// *************************** Energy Profile Plots *********************************
 
 	// Energy profile No Algorithm
-	hEnergyProfile = tfs->make<TH1D>("energyprofile","Energy Profile of Events",30,0.,500.);
-	hEnergyProfile->GetXaxis()->SetTitle("Z (cm)");
-	hEnergyProfile->GetYaxis()->SetTitle("Energy (MeV/cm)");
-	
-	//hEnergyProfile->SetOption("BAR");
-	//hEnergyProfile->Sumw2(kFALSE);
+	hEnergyProfile = tfs->make<TH1D>("energyprofile","Energy Profile of Events; Z [cm]; [MeV/cm]",30,0.,500.);
 
 	// Energy profile PCA RECO
-	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis)",100,0.,500.);
-	hEnergyProfilePCA->GetXaxis()->SetTitle("Z (cm)");
-	hEnergyProfilePCA->GetYaxis()->SetTitle("dEdx (MeV/cm)");
-
+	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis); Z [cm]; dEdx [MeV/cm]",100,0.,500.);
 
 	// True Energy profile 
-	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth)",125,0.,500.);
-	hTrueEnergyProfile->GetXaxis()->SetTitle("Z (cm)");
-	hTrueEnergyProfile->GetYaxis()->SetTitle("True dE [MeV]");
+	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",125,0.,500.);
 
-	//True energy profile in X direction
+	// True energy profile in X direction
 	hTrueEnergyProfileX = tfs->make<TH1D>("hTrueEnergyProfileX","Energy Profile of Events (Truth) in X Dir; X [cm]; True dE [MeV]",600,-60.,60.);
 	
+	// True energy profile in R direction
 	hTrueEnergyProfileR = tfs->make<TH1D>("hTrueEnergyProfileR","Energy Profile of Events (Truth) in Radial Dir; r [cm]; True dE [MeV]",1000,0.,100.);
-
 
 	// ********************************************************************************
 
 	// Reco-Truth energy scatter plot
- 	hERecoTruthScat= tfs->make<TH2D>("ERecoTruthScat","Scatter Plot of Reco and Truth Energies (muons only) ",100,160.,400.,100,160.,400.);
-	hERecoTruthScat->GetYaxis()->SetTitle("Reco Energy (Mev)");
-	hERecoTruthScat->GetXaxis()->SetTitle("Truth Energy");
+ 	hERecoTruthScat= tfs->make<TH2D>("ERecoTruthScat","Scatter Plot of Reco and Truth Energies (muons only); Reco Energy [MeV]; Truth Energy [MeV] ",100,160.,400.,100,160.,400.);
 	hERecoTruthScat->SetOption("SCAT");
 
-
-	hERecoTruthDiff = tfs->make<TH1D>("ERecoTruthDiff","Difference of Energy Truth minus Reco",200,-50.,250.);
-	hERecoTruthDiff->GetXaxis()->SetTitle("Energy Difference (Mev)");
-	hERecoTruthDiff->GetYaxis()->SetTitle("Frequency Density");
-
-	
-	hPosition2D = tfs->make<TH2D>("position2d","2D Position of Hits (Sum of all events)",200,0.,250.,200,-30.,30.); 
-	hPosition2D->GetXaxis()->SetTitle("Z (cm)");
-	hPosition2D->GetYaxis()->SetTitle("X (cm)");
-	hPosition2D->GetYaxis()->SetTitleOffset(1.15);
-	
-	hPosition2DSOSA = tfs->make<TH2D>("position2dsosa","2D Position of Hits after SOSA (Sum of all events)",200,0.,250.,200,-30.,30.);
-	hPosition2DSOSA->GetXaxis()->SetTitle("Along shower axis (cm)");
-	hPosition2DSOSA->GetYaxis()->SetTitle("Perpendicular to shower axis (cm)");
-	hPosition2DSOSA->GetYaxis()->SetTitleOffset(1.05);
-	
-	hPosition2DPCA = tfs->make<TH2D>("position2dpca","2D Position of Hits after PCA (Sum of all events)",250,0.,200.,200,-30.,30.);
-	hPosition2DPCA->GetXaxis()->SetTitle("Along shower axis (cm)");
-	hPosition2DPCA->GetYaxis()->SetTitle("Perpendicular to shower axis (cm)");
-	hPosition2DPCA->GetYaxis()->SetTitleOffset(1.15);
-	
-	hTruePosition2D = tfs->make<TH2D>("trueposition2d","2D Position of Energy Deposits (Sum of all events)",200,0.,250.,200,-30.,30.);
-	hTruePosition2D->GetXaxis()->SetTitle("Z (cm)");
-	hTruePosition2D->GetYaxis()->SetTitle("X (cm)");
-	hTruePosition2D->GetYaxis()->SetTitleOffset(1.15);
-	
-	hTruePosition2DSOSA = tfs->make<TH2D>("trueposition2dsosa","2D Position of Energy Deposits after SOSA (Sum of all events)",200,0.,200.,200,-30.,30.);
-	hTruePosition2DSOSA->GetXaxis()->SetTitle("Along shower axis (cm)");
-	hTruePosition2DSOSA->GetYaxis()->SetTitle("Perpendicular to shower axis (cm)");
-	hTruePosition2DSOSA->GetYaxis()->SetTitleOffset(1.05);
-	
-	hTruePosition2DPCA = tfs->make<TH2D>("trueposition2dpca","2D Position of Energy Deposits after PCA (Sum of all events)",200,0.,200.,200,-30.,30.);
-	hTruePosition2DPCA->GetXaxis()->SetTitle("Along shower axis (cm)");
-	hTruePosition2DPCA->GetYaxis()->SetTitle("Perpendicular to shower axis (cm)");
-	hTruePosition2DPCA->GetYaxis()->SetTitleOffset(1.15);
-	
-	hEnergyDetected = tfs->make<TH1D>("energydetected","Energy Detected in an Event",50,0.,-5.);
-	hEnergyDetected->GetXaxis()->SetTitle("Energy (MeV)");
-	hEnergyDetected->GetYaxis()->SetTitle("Frequency Density");
-	hEnergyDetected->GetYaxis()->SetTitleOffset(1.1);
-	
-	
-	hPerpDist = tfs->make<TH1D>("perpdist","Perpendicular Distance (should be empty)",700,0.,35.);
-	hPerpDist->GetXaxis()->SetTitle("X Distance (cm)");
-	hPerpDist->GetYaxis()->SetTitle("Frequency Density");
-	hPerpDist->GetYaxis()->SetTitleOffset(1.05);
-
-	hMolRadTruth2D = tfs->make<TH1D>("MoliereTruth2D","Moliere Radius Using Truth Information (Straight Only)",200,0.,-5.);
-	hMolRadTruth2D->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadTruth2D->GetYaxis()->SetTitle("Frequency Density");
-
-	hMolRadTruth3D = tfs->make<TH1D>("MoliereTruth3D","Moliere Radius Using Truth Information (Straight Only)",200,0.,-5.);
-	hMolRadTruth3D->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadTruth3D->GetYaxis()->SetTitle("Frequency Density");
-
-
-	hMolRadHitPCA = tfs->make<TH1D>("hitmoliereradiuspca","Moliere Radius Using Hit Information (PCA)",50,0.,-5.);
-	hMolRadHitPCA->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadHitPCA->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadHitPCA->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadHitPCA->SetFillColor(kAzure-4);
-	
-	hMolRadHitSOSA = tfs->make<TH1D>("hitmoliereradiussosa","Moliere Radius Using Hit Information (SOSA)",50,0.,-5.);
-	hMolRadHitSOSA->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadHitSOSA->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadHitSOSA->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadHitSOSA->SetFillColor(kAzure-4);
-	
-	hMolRadTruthPCA2D = tfs->make<TH1D>("truthmoliereradius2Dpca","Moliere Radius Using 2D Truth Information (PCA)",50,0.,-5.);
-	hMolRadTruthPCA2D->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadTruthPCA2D->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadTruthPCA2D->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadTruthPCA2D->SetFillColor(kAzure-4);
-	
-	hMolRadTruthSOSA2D = tfs->make<TH1D>("truthmoliereradius2Dsos","Moliere Radius Using 2D Truth Information (SOSA)",50,0.,-5.);
-	hMolRadTruthSOSA2D->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadTruthSOSA2D->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadTruthSOSA2D->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadTruthSOSA2D->SetFillColor(kAzure-4);
-	
-	hMolRadTruthPCA3D = tfs->make<TH1D>("truthmoliereradius3Dpca","Moliere Radius Using 3D Truth Information",50,0.,-5.);
-	hMolRadTruthPCA3D->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadTruthPCA3D->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadTruthPCA3D->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadTruthPCA3D->SetFillColor(kAzure-4);
-	
-	hMolRadCorrelation2Dh2Dt = tfs->make<TH2D>("molradcorrelation2dh2dt","2D Hit - 2D Truth Moliere Radius Correlation (PCA)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh2Dt->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelation2Dh2Dt->GetYaxis()->SetTitle("2D Truth Moliere Radius (cm)");
-	
-	hMolRadCorrelation2Dh3DtPCA = tfs->make<TH2D>("molradcorrelation2dh3dtpca","2D Hit - 3D Truth Moliere Radius Correlation (PCA)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh3DtPCA->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelation2Dh3DtPCA->GetYaxis()->SetTitle("3D Truth Moliere Radius (cm)");
-	
-	hMolRadCorrelation2Dh3DtSOSA = tfs->make<TH2D>("molradcorrelation2dh3dtsosa","2D Hit - 3D Truth Moliere Radius Correlation (SOSA)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh3DtSOSA->GetXaxis()->SetTitle("2D Hit Moliere Radius (SOSA) (cm)");
-	hMolRadCorrelation2Dh3DtSOSA->GetYaxis()->SetTitle("3D Truth Moliere Radius (PCA) (cm)");
-	
-	hMolRadCorrelation2Dt3Dt = tfs->make<TH2D>("molradcorrelation2dt3dt","2D Truth - 3D Truth Moliere Radius Correlation (PCA)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dt3Dt->GetXaxis()->SetTitle("2D Truth Moliere Radius (cm)");
-	hMolRadCorrelation2Dt3Dt->GetYaxis()->SetTitle("3D Truth Moliere Radius (cm)");
-	
-	hMolRadCorrelationSOSA2Dh2Dt = tfs->make<TH2D>("molradcorrelationSOSA2dh2dt","2D Hit - 2D Truth Moliere Radius Correlation (SOSA)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelationSOSA2Dh2Dt->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelationSOSA2Dh2Dt->GetYaxis()->SetTitle("2D Truth Moliere Radius (cm)");
-
+	// Reco-Truth energy Histogram
+	hERecoTruthDiff = tfs->make<TH1D>("ERecoTruthDiff","Difference of Energy Truth minus Reco; Energy Difference [MeV]; Frequency Density",200,-50.,250.);
 	
 	// Energy Calibration scatter plot
 	gCorr_2Dt_3Dt = tfs->makeAndRegister<TGraph>("gCorr_2Dt_3Dt", "2D Truth to 3D Truth Moliere Radius Scatter Plot; 2D Moliere Radius [cm]; 3D Moliere Radius [cm]");
 	gCorr_2Dt_3Dt->SetMarkerStyle(kFullDotMedium);
 	gCorr_2Dt_3Dt->SetMarkerSize(6);
 	gCorr_2Dt_3Dt->SetLineWidth(0);
+
+	// *************************** Event Displays *********************************
+	hPosition2D = tfs->make<TH2D>("position2d","2D Position of Hits (Sum of all events); Z [cm]; X [cm]",200,0.,250.,200,-30.,30.); 
 	
-	hMolRadCorrelation2Dh2DtNorm = tfs->make<TH2D>("molradcorrelation2dh2dtnorm","2D Hit - 2D Truth Moliere Radius Correlation (PCA, Normalised)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh2DtNorm->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelation2Dh2DtNorm->GetYaxis()->SetTitle("2D Truth Moliere Radius (cm)");
+	hPosition2DSOSA = tfs->make<TH2D>("position2dsosa","2D Position of Hits after SOSA (Sum of all events); Along shower axis [cm]; Perpendicular to shower axis [cm]",200,0.,250.,200,-30.,30.);
 	
-	hMolRadCorrelation2Dh3DtPCANorm = tfs->make<TH2D>("molradcorrelation2dh3dtpcanorm","2D Hit - 3D Truth Moliere Radius Correlation (PCA, Normalised)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh3DtPCANorm->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelation2Dh3DtPCANorm->GetYaxis()->SetTitle("3D Truth Moliere Radius (cm)");
+	hPosition2DPCA = tfs->make<TH2D>("position2dpca","2D Position of Hits after PCA (Sum of all events); Along shower axis [cm]; Perpendicular to shower axis [cm]",250,0.,200.,200,-30.,30.);
 	
-	hMolRadCorrelation2Dh3DtSOSANorm = tfs->make<TH2D>("molradcorrelation2dh3dtsosanorm","2D Hit - 3D Truth Moliere Radius Correlation (SOSA, Normalised)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh3DtSOSANorm->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelation2Dh3DtSOSANorm->GetYaxis()->SetTitle("3D Truth Moliere Radius (cm)");
+	hTruePosition2D = tfs->make<TH2D>("trueposition2d","2D Position of Energy Deposits (Sum of all events); Z [cm]; X [cm]",200,0.,250.,200,-30.,30.);
 	
-	hMolRadCorrelation2Dt3DtNorm = tfs->make<TH2D>("molradcorrelation2dt3dtnorm","2D Truth - 3D Truth Moliere Radius Correlation (PCA, Normalised)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelation2Dh2DtNorm->GetXaxis()->SetTitle("2D Truth Moliere Radius (cm)");
-	hMolRadCorrelation2Dh2DtNorm->GetYaxis()->SetTitle("3D Truth Moliere Radius (cm)");
+	hTruePosition2DSOSA = tfs->make<TH2D>("trueposition2dsosa","2D Position of Energy Deposits after SOSA (Sum of all events);Along shower axis [cm];Perpendicular to shower axis [cm]",200,0.,200.,200,-30.,30.);
 	
-	hMolRadCorrelationSOSA2Dh2DtNorm = tfs->make<TH2D>("molradcorrelationsosa2dh2dtnorm","2D Hit - 2D Truth Moliere Radius Correlation (SOSA, Normalised)",50,0.,20.,50,0.,20.);
-	hMolRadCorrelationSOSA2Dh2DtNorm->GetXaxis()->SetTitle("2D Hit Moliere Radius (cm)");
-	hMolRadCorrelationSOSA2Dh2DtNorm->GetYaxis()->SetTitle("2D Truth Moliere Radius (cm)");
+	hTruePosition2DPCA = tfs->make<TH2D>("trueposition2dpca","2D Position of Energy Deposits after PCA (Sum of all events); Along shower axis [cm]; Perpendicular to shower axis [cm]",200,0.,200.,200,-30.,30.);
+
+	// ********************************************************************************
+
+	// Truth Energy Detected Histogram
+	hEnergyDetected = tfs->make<TH1D>("energydetected","Energy Detected in an Event; Energy [MeV]; Frequency Density",50,0.,-5.);
 	
-	hPCASOSAAngle = tfs->make<TH1D>("pcasosaangle","Angle between PCA and SOSA vectors",40,0.,-5.);
-	hPCASOSAAngle->GetXaxis()->SetTitle("Angle (deg)");
-	hPCASOSAAngle->GetYaxis()->SetTitle("Frequency Density");
+	// Histogram used in calculated the Moliere Radius
+	hPerpDist = tfs->make<TH1D>("perpdist","Perpendicular Distance (should be empty); X [cm]; Frequency Density",700,0.,35.);
+
+	// *******************************  Moliere Radius Plots ****************************
+
+	hMolRadTruth2D = tfs->make<TH1D>("MoliereTruth2D","Moliere Radius Using Truth Information (Straight Only); Moliere Radius [cm]; Frequency Density",200,0.,-5.);
+
+	hMolRadTruth3D = tfs->make<TH1D>("MoliereTruth3D","Moliere Radius Using Truth Information (Straight Only); Moliere Radius [cm]; Frequency Density",200,0.,-5.);
+
+	hMolRadHitPCA = tfs->make<TH1D>("hitmoliereradiuspca","Moliere Radius Using Hit Information (PCA); Moliere Radius [cm]; Frequency Density",50,0.,-5.);
 	
-	hEnergyFraction = tfs->make<TH1D>("energyfraction","Fraction of truth initial energy deposited",50,0.,1.);
-	hEnergyFraction->GetXaxis()->SetTitle("Energy Fraction");
-	hEnergyFraction->GetYaxis()->SetTitle("Frequency Density");
+	hMolRadHitSOSA = tfs->make<TH1D>("hitmoliereradiussosa","Moliere Radius Using Hit Information (SOSA); Moliere Radius [cm]; Frequency Density",50,0.,-5.);
+
+	hMolRadTruthPCA2D = tfs->make<TH1D>("truthmoliereradius2Dpca","Moliere Radius Using 2D Truth Information (PCA); Moliere Radius [cm]; Frequency Density",50,0.,-5.);
 	
-	hMolRadConvertedPCA = tfs->make<TH1D>("moliereradiusconvertedpca","Converted Moliere Radius (MC Hit Information, PCA)",50,0.,-5.);
-	hMolRadConvertedPCA->GetXaxis()->SetTitle("Moliere Radius (cm)");
-	hMolRadConvertedPCA->GetYaxis()->SetTitle("Frequency Density");
-	hMolRadConvertedPCA->GetYaxis()->SetTitleOffset(1.05);
-	hMolRadConvertedPCA->SetFillColor(kAzure-4);
+	hMolRadTruthSOSA2D = tfs->make<TH1D>("truthmoliereradius2Dsos","Moliere Radius Using 2D Truth Information (SOSA); Moliere Radius [cm]; Frequency Density",50,0.,-5.);
 	
-	DataTree = tfs->make<TTree>("EventTree","EventTree"); // Create the TTree
+	hMolRadTruthPCA3D = tfs->make<TH1D>("truthmoliereradius3Dpca","Moliere Radius Using 3D Truth Information; Moliere Radius [cm]; Frequency Density",50,0.,-5.);
+
+	// ******************************* Correlation Plots ****************************
+
+	hMolRadCorrelation2Dh2Dt = tfs->make<TH2D>("molradcorrelation2dh2dt","2D Hit - 2D Truth Moliere Radius Correlation (PCA);2D Hit Moliere Radius [cm];2D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
 	
-	// Event Specific
+	hMolRadCorrelation2Dh3DtPCA = tfs->make<TH2D>("molradcorrelation2dh3dtpca","2D Hit - 3D Truth Moliere Radius Correlation (PCA); 2D Hit Moliere Radius [cm];3D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelation2Dh3DtSOSA = tfs->make<TH2D>("molradcorrelation2dh3dtsosa","2D Hit - 3D Truth Moliere Radius Correlation (SOSA); 2D Hit Moliere Radius (SOSA) [cm]; 3D Truth Moliere Radius (PCA) [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelation2Dt3Dt = tfs->make<TH2D>("molradcorrelation2dt3dt","2D Truth - 3D Truth Moliere Radius Correlation (PCA); 2D Truth Moliere Radius [cm]; 3D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelationSOSA2Dh2Dt = tfs->make<TH2D>("molradcorrelationSOSA2dh2dt","2D Hit - 2D Truth Moliere Radius Correlation (SOSA); 2D Hit Moliere Radius [cm]; 2D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelation2Dh2DtNorm = tfs->make<TH2D>("molradcorrelation2dh2dtnorm","2D Hit - 2D Truth Moliere Radius Correlation (PCA, Normalised); 2D Hit Moliere Radius [cm]; 2D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelation2Dh3DtPCANorm = tfs->make<TH2D>("molradcorrelation2dh3dtpcanorm","2D Hit - 3D Truth Moliere Radius Correlation (PCA, Normalised); 2D Hit Moliere Radius [cm];3D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+
+	hMolRadCorrelation2Dh3DtSOSANorm = tfs->make<TH2D>("molradcorrelation2dh3dtsosanorm","2D Hit - 3D Truth Moliere Radius Correlation (SOSA, Normalised); 2D Hit Moliere Radius [cm];3D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelation2Dt3DtNorm = tfs->make<TH2D>("molradcorrelation2dt3dtnorm","2D Truth - 3D Truth Moliere Radius Correlation (PCA, Normalised); 2D Truth Moliere Radius [cm]; 3D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	hMolRadCorrelationSOSA2Dh2DtNorm = tfs->make<TH2D>("molradcorrelationsosa2dh2dtnorm","2D Hit - 2D Truth Moliere Radius Correlation (SOSA, Normalised); 2D Hit Moliere Radius [cm]; 2D Truth Moliere Radius [cm]",50,0.,20.,50,0.,20.);
+	
+	// Angle between the PCA and SOSA axes
+	hPCASOSAAngle = tfs->make<TH1D>("pcasosaangle","Angle between PCA and SOSA vectors; Angle [deg]; Frequency Density",40,0.,-5.);
+	
+	// Fraction of Truth energy deposited
+	hEnergyFraction = tfs->make<TH1D>("energyfraction","Fraction of truth initial energy deposited; Energy Fraction;Frequency Density",50,0.,1.);
+	
+	// Containment Converted Moliere Radius Histogram
+	hMolRadConvertedPCA = tfs->make<TH1D>("moliereradiusconvertedpca","Converted Moliere Radius (MC Hit Information, PCA); Moliere Radius [cm];Frequency Density",50,0.,-5.);
+	
+	// Create the TTree and add relavent branches
+	DataTree = tfs->make<TTree>("EventTree","EventTree"); 
+
+	// Event Information
 	DataTree->Branch("run", &run);
 	DataTree->Branch("subrun",&subrun);
     DataTree->Branch("event",&evt);
@@ -852,9 +764,6 @@ void MolRadReco::beginJob() {
     //DataTree->Branch("PCA_E", &PCA_E);
     //DataTree->Branch("PCA_ZPos", &PCA_ZPos);
     //DataTree->Branch("PCA_XPos", &PCA_XPos);
-
-    PCA_E_Total = 0.;
-
 
 	std::cout << "Starting job..." << std::endl;
 }
@@ -1311,11 +1220,10 @@ void MolRadReco::endJob()
 	double E_total = Truth_E_Total; // Define for truth or reco moliere radius Truth_E_Total for Truth
 	std::cout<<"Total ENERGY: " << E_total << std::endl;
     
-	// Calculate the Moliere Radius over all showers 
-	//double Moliere_Radius_All = Containment(E_total, hPerpDist_All, "T");  //R_M
-	//double Moliere_Radius_All_Twice = Containment(E_total, hPerpDist_All, "T2"); // 2 * R_M
+	// Calculate the Longitudinal containment of a shower
 	double L_Containment = Containment(hTrueEnergyProfile->Integral(), hTrueEnergyProfile, "L"); // Longitudinal Containment
 
+	// Calculate the Moliere Radius over all showers 
 	double hReco_PerpDist_2D_Rm = 	    Containment(	hReco_PerpDist_2D_All->Integral()      ,hReco_PerpDist_2D_All      ,"T");
 	double hReco_PerpDist_2D_PCA_Rm =   Containment(	hReco_PerpDist_2D_PCA_All->Integral()  ,hReco_PerpDist_2D_PCA_All  ,"T");
 	double hReco_PerpDist_2D_SOSA_Rm =  Containment(	hReco_PerpDist_2D_SOSA_All->Integral() ,hReco_PerpDist_2D_SOSA_All ,"T");
@@ -1325,20 +1233,30 @@ void MolRadReco::endJob()
 	double hTruth_PerpDist_3D_Rm = 		Containment(	hTruth_PerpDist_3D_All->Integral()     ,hTruth_PerpDist_3D_All     ,"T");
 	double hTruth_PerpDist_3D_PCA_Rm =  Containment(	hTruth_PerpDist_3D_PCA_All->Integral() ,hTruth_PerpDist_3D_PCA_All ,"T");
 
-	
+	// Calculate 2 * the Moliere Radius over all showers 
+	double hReco_PerpDist_2D_2Rm = 	     Containment(	hReco_PerpDist_2D_All->Integral()      ,hReco_PerpDist_2D_All      ,"T2");
+	double hReco_PerpDist_2D_PCA_2Rm =   Containment(	hReco_PerpDist_2D_PCA_All->Integral()  ,hReco_PerpDist_2D_PCA_All  ,"T2");
+	double hReco_PerpDist_2D_SOSA_2Rm =  Containment(	hReco_PerpDist_2D_SOSA_All->Integral() ,hReco_PerpDist_2D_SOSA_All ,"T2");
+	double hTruth_PerpDist_2D_2Rm = 	 Containment(	hTruth_PerpDist_2D_All->Integral()     ,hTruth_PerpDist_2D_All     ,"T2");
+	double hTruth_PerpDist_2D_PCA_2Rm =  Containment(	hTruth_PerpDist_2D_PCA_All->Integral() ,hTruth_PerpDist_2D_PCA_All ,"T2");
+	double hTruth_PerpDist_2D_SOSA_2Rm = Containment(	hTruth_PerpDist_2D_SOSA_All->Integral(),hTruth_PerpDist_2D_SOSA_All,"T2");
+	double hTruth_PerpDist_3D_2Rm = 	 Containment(	hTruth_PerpDist_3D_All->Integral()     ,hTruth_PerpDist_3D_All     ,"T2");
+	double hTruth_PerpDist_3D_PCA_2Rm =  Containment(	hTruth_PerpDist_3D_PCA_All->Integral() ,hTruth_PerpDist_3D_PCA_All ,"T2");
+
 
 	std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-	//std::cout << "Moliere Radius for all events: " << Moliere_Radius_All << std::endl;
-	//std::cout << "Twice the Moliere Radius for all events: " << Moliere_Radius_All_Twice << std::endl;
-	std::cout << "True Longitudinal Profile Containment: " << L_Containment  << std::endl;
-	std::cout << "Moliere Radius Reco 2D : " 	  << hReco_PerpDist_2D_Rm << std::endl;
-	std::cout << "Moliere Radius Reco 2D PCA : "  << hReco_PerpDist_2D_PCA_Rm << std::endl;
-	std::cout << "Moliere Radius Reco 2D SOSA: "  << hReco_PerpDist_2D_SOSA_Rm << std::endl;
-	std::cout << "Moliere Radius Truth 2D : "	  << hTruth_PerpDist_2D_Rm << std::endl;
-	std::cout << "Moliere Radius Truth 2D PCA : " << hTruth_PerpDist_2D_PCA_Rm << std::endl;
-	std::cout << "Moliere Radius Truth 2D SOSA: " << hTruth_PerpDist_2D_SOSA_Rm << std::endl;
-	std::cout << "Moliere Radius Truth 3D : " 	  << hTruth_PerpDist_3D_Rm << std::endl;
-	std::cout << "Moliere Radius Truth 3D PCA : " << hTruth_PerpDist_3D_PCA_Rm  << std::endl;
+	std::cout << "True Longitudinal Profile 95% Containment: " << L_Containment  << std::endl;
+	std::cout << std::endl;
+	std::cout << "Moliere Radius Reco 2D:\t\t" 	   << hReco_PerpDist_2D_Rm        << "\t 2 * Moliere Radius Reco 2D:\t\t"        << hReco_PerpDist_2D_2Rm       << std::endl;
+	std::cout << "Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_Rm    << "\t 2 * Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_2Rm   << std::endl;
+	std::cout << "Moliere Radius Reco 2D SOSA:\t"  << hReco_PerpDist_2D_SOSA_Rm   << "\t 2 * Moliere Radius Reco 2D SOSA:\t"  << hReco_PerpDist_2D_SOSA_2Rm  << std::endl;
+	std::cout << std::endl;
+	std::cout << "Moliere Radius Truth 2D:\t"	   << hTruth_PerpDist_2D_Rm       << "\t 2 * Moliere Radius Truth 2D:\t\t"	  << hTruth_PerpDist_2D_2Rm      << std::endl;
+	std::cout << "Moliere Radius Truth 2D PCA:\t"  << hTruth_PerpDist_2D_PCA_Rm   << "\t 2 * Moliere Radius Truth 2D PCA:\t"  << hTruth_PerpDist_2D_PCA_2Rm  << std::endl;
+	std::cout << "Moliere Radius Truth 2D SOSA:\t" << hTruth_PerpDist_2D_SOSA_Rm  << "\t 2 * Moliere Radius Truth 2D SOSA:\t" << hTruth_PerpDist_2D_SOSA_2Rm << std::endl;
+	std::cout << std::endl;
+	std::cout << "Moliere Radius Truth 3D:\t" 	   << hTruth_PerpDist_3D_Rm       << "\t 2 * Moliere Radius Truth 3D:\t\t" 	  << hTruth_PerpDist_3D_2Rm      << std::endl;
+	std::cout << "Moliere Radius Truth 3D PCA:\t"  << hTruth_PerpDist_3D_PCA_Rm   << "\t 2 * Moliere Radius Truth 3D PCA:\t"  << hTruth_PerpDist_3D_PCA_2Rm  << std::endl;
 
 	std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
 
