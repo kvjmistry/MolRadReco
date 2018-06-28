@@ -511,16 +511,27 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[1] = energyDeposit.y;	        // Y
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
-						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
-					
+						//if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
+						
+						// Use this block as opposed to above if want to use LArIAT geometry
+						if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {
+							addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;
+						} 
+
 					} else { // 2D case
 						
 						TVectorD vHitPos(2);
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
 						vHitPos[1] = energyDeposit.z - 250.;	// Z
 						
-						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
+						//if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
+						
+						// Use this block as opposed to above if want to use LArIAT geometry
+						if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { 
+							addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; 
+						} // delete any spurious data points (z<0) and add the entries to the vector
 
+						// Fill the 2D position histogram
 						if (HistFill != event) { 
 							hTruePosition2D->Fill(vHitPos[1], vHitPos[0], energyDeposit.energy);
 						}
@@ -650,7 +661,7 @@ void MolRadReco::beginJob() {
 	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis); Z [cm]; dEdx [MeV/cm]",100,0.,500.);
 
 	// True Energy profile 
-	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",125,0.,500.);
+	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",100,0.,500.);
 
 	// True energy profile in X direction
 	hTrueEnergyProfileX = tfs->make<TH1D>("hTrueEnergyProfileX","Energy Profile of Events (Truth) in X Dir; X [cm]; True dE [MeV]",600,-60.,60.);
@@ -806,6 +817,7 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 	// Make Histograms
 	for (int i = 0; i < N; i++ ) {
 		hEnergyProfile->Fill(vEntries[i].position[1], vEntries[i].energy); //Choose 1 event to look at the energy profile
+		
 		hReco_PerpDist_2D_All->Fill(std::abs(vEntries[i].position[0]), vEntries[i].energy); // Moliere calculation for Reco data
 
 		// Fill 2D histogram (event display like) (Z,X,Energy) Shows a histogram of the x-z plane of all the showers combined
@@ -1186,8 +1198,9 @@ void MolRadReco::endJob()
 
 
 	// True energy profile normalised
-	//double scale = hTrueEnergyProfile->GetBinContent(hTrueEnergyProfile->GetMaximumBin()); // Scale by the max bin value
-	//hTrueEnergyProfile->Scale (1./scale);
+	double scale = hTrueEnergyProfile->GetBinContent(hTrueEnergyProfile->GetMaximumBin()); // Scale by the max bin value
+	hTrueEnergyProfile->Scale (1./scale);
+	
 	Truth_E_Total+=hTrueEnergyProfile -> Integral();
 	//hTrueEnergyProfile->Scale (1./fills);
 	std::cout << "IntegralTrue= "<< hTrueEnergyProfile -> Integral() << std::endl; // Output the number of entries 
@@ -1199,6 +1212,9 @@ void MolRadReco::endJob()
     TrueEnergyProfileFit -> SetParLimits(3,  1,  30);   // THETA
 	hTrueEnergyProfile->Fit("TrueEnergyProfileFit","R"); 
 	TrueEnergyProfileFit = hTrueEnergyProfile->GetFunction("TrueEnergyProfileFit");
+
+	
+	
 
 	// Normalise reco Energy profile
 	// scale = hEnergyProfile->GetBinContent(hEnergyProfile->GetMaximumBin()); // Scale by the max bin value
@@ -1245,9 +1261,11 @@ void MolRadReco::endJob()
 
 
 	std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n" << std::endl;
-	std::cout << "True Longitudinal Profile 95% Containment: " << L_Containment  << std::endl;
+	std::cout << "True Longitudinal Profile 95% Containment:\t" << L_Containment  << std::endl;
+	std::cout << "True Longitudinal Profile Max Bin:\t" << hTrueEnergyProfile -> GetBinCenter(hTrueEnergyProfile -> GetMaximumBin())  << std::endl;
+	std::cout << "True Longitudinal Profile Max Bin Fit:\t" << TrueEnergyProfileFit->GetMaximumX() << std::endl;
 	std::cout << std::endl;
-	std::cout << "Moliere Radius Reco 2D:\t\t" 	   << hReco_PerpDist_2D_Rm        << "\t 2 * Moliere Radius Reco 2D:\t\t"        << hReco_PerpDist_2D_2Rm       << std::endl;
+	std::cout << "Moliere Radius Reco 2D:\t\t" 	   << hReco_PerpDist_2D_Rm        << "\t 2 * Moliere Radius Reco 2D:\t\t"        << hReco_PerpDist_2D_2Rm    << std::endl;
 	std::cout << "Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_Rm    << "\t 2 * Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_2Rm   << std::endl;
 	std::cout << "Moliere Radius Reco 2D SOSA:\t"  << hReco_PerpDist_2D_SOSA_Rm   << "\t 2 * Moliere Radius Reco 2D SOSA:\t"  << hReco_PerpDist_2D_SOSA_2Rm  << std::endl;
 	std::cout << std::endl;
@@ -1257,7 +1275,6 @@ void MolRadReco::endJob()
 	std::cout << std::endl;
 	std::cout << "Moliere Radius Truth 3D:\t" 	   << hTruth_PerpDist_3D_Rm       << "\t 2 * Moliere Radius Truth 3D:\t\t" 	  << hTruth_PerpDist_3D_2Rm      << std::endl;
 	std::cout << "Moliere Radius Truth 3D PCA:\t"  << hTruth_PerpDist_3D_PCA_Rm   << "\t 2 * Moliere Radius Truth 3D PCA:\t"  << hTruth_PerpDist_3D_PCA_2Rm  << std::endl;
-
 	std::cout << "\n\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
 
 
