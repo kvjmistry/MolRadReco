@@ -1176,13 +1176,13 @@ void MolRadReco::endJob()
 	ECalScatFit = gECalScat->GetFunction("pol1");
 	double p0 = ECalScatFit->GetParameter(0);
 	double p1 = ECalScatFit->GetParameter(1);
-
 	std::cout <<"ENERGY FIT PARAMETERS  " << "P0: " << p0 << "    P1: " << p1 << std::endl;
 
 	// Fit the Reco-Truth Difference plot
+	double meanECalScatFit; // For shifting the data
 	hERecoTruthDiff -> Fit("gaus", "","");
 	ECalScatFit = hERecoTruthDiff->GetFunction("gaus");
-	double meanECalScatFit = ECalScatFit->GetParameter("Mean"); 
+	//double meanECalScatFit = ECalScatFit->GetParameter("Mean"); // Turn on if want to scale 
 	
 	// Rescale the dEdx Histogram by the area
 	hdEdxValues->Scale(1./hdEdxValues->Integral());
