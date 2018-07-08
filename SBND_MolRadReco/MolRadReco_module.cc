@@ -153,7 +153,7 @@ private:
 	TH1D* 	hPerpDist;						// Histogram used for calculating moliere radius
 
 	// Doubles	
-	double pitch = 0.3 ;	        		// 3 mm wire spacing in SBND
+	double pitch{0.3} ;	        		// 3 mm wire spacing in SBND
 	double dEnergySumTotal;		        	// total energy over all events
 	double dEnergyDepositedSum; 
 	double PCA_E_Total= 0.;
@@ -441,9 +441,11 @@ double MolRadReco::Containment(double energySum, TH1D *h, std::string Type) {
 	double dIntegral = 0.;
 	double Range = 0.; 			// The integral range
 
-	if 		(Type == "T")  Range = 0.9; 	// For Moliere radius
-	else if (Type == "T2") Range = 0.95; 	// For 2x Moliere Radius
-	else if (Type == "L")  Range = 0.95;  	// For Longitudingal Containment	
+	if 		(Type == "T")   Range = 0.9; 	// For Moliere radius
+	else if (Type == "T2")  Range = 0.95; 	// For 2x Moliere Radius
+	else if (Type == "L")   Range = 0.95;  	// For Longitudingal Containment	
+	else if (Type == "L50") Range = 0.5;    // For tmed 
+	else if (Type == "L98") Range = 0.98;   // For Calorimeter lenth
 
 	// Check if the integral of the charge agrees with the summed energy
 	if (std::abs(1 - (h->Integral(0, iNbins+1)/energySum)) < 0.001) { // calculate integral-to-total-energy ratio (include mean energy deposit energy to convert counts to energy)
@@ -453,9 +455,12 @@ double MolRadReco::Containment(double energySum, TH1D *h, std::string Type) {
 			iBinUpper++;
 			dIntegral = h->Integral(0, iBinUpper);
 		}
-
-		 //std::cout << "Calculated Moliere Radius in test function: " << h->GetBinLowEdge(iBinUpper) << std::endl;
+		
+		//std::cout << "iBinUpper\t" << iBinUpper << std::endl;
+		
+		//std::cout << "Calculated Moliere Radius in test function: " << h->GetBinLowEdge(iBinUpper) << std::endl;
 		return h->GetBinLowEdge(iBinUpper);
+		
 
 	} 
 	else {
@@ -511,12 +516,12 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[1] = energyDeposit.y;	        // Y
 						vHitPos[2] = energyDeposit.z - 250.;	// Z
 
-						//if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
+						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						
 						// Use this block as opposed to above if want to use LArIAT geometry
-						if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {
-							addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;
-						} 
+						//if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {
+						//	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;
+						//} 
 
 					} else { // 2D case
 						
@@ -524,12 +529,12 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						vHitPos[0] = energyDeposit.x - 102.5;	// X
 						vHitPos[1] = energyDeposit.z - 250.;	// Z
 						
-						//if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
+						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
 						
 						// Use this block as opposed to above if want to use LArIAT geometry
-						if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { 
-							addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; 
-						} // delete any spurious data points (z<0) and add the entries to the vector
+						//if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { 
+						//	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; 
+						//} // delete any spurious data points (z<0) and add the entries to the vector
 
 						// Fill the 2D position histogram
 						if (HistFill != event) { 
@@ -661,7 +666,7 @@ void MolRadReco::beginJob() {
 	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis); Z [cm]; dEdx [MeV/cm]",100,0.,500.);
 
 	// True Energy profile 
-	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",100,0.,500.);
+	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",3000,0.,500.);
 
 	// True energy profile in X direction
 	hTrueEnergyProfileX = tfs->make<TH1D>("hTrueEnergyProfileX","Energy Profile of Events (Truth) in X Dir; X [cm]; True dE [MeV]",600,-60.,60.);
@@ -1238,6 +1243,8 @@ void MolRadReco::endJob()
     
 	// Calculate the Longitudinal containment of a shower
 	double L_Containment = Containment(hTrueEnergyProfile->Integral(), hTrueEnergyProfile, "L"); // Longitudinal Containment
+	double L_tmed        = Containment(hTrueEnergyProfile->Integral(), hTrueEnergyProfile, "L50");      // tmed
+	double L_Cal         = Containment(hTrueEnergyProfile->Integral(), hTrueEnergyProfile, "L98"); 		 // Carorimeter length
 
 	// Calculate the Moliere Radius over all showers 
 	double hReco_PerpDist_2D_Rm = 	    Containment(	hReco_PerpDist_2D_All->Integral()      ,hReco_PerpDist_2D_All      ,"T");
@@ -1264,6 +1271,8 @@ void MolRadReco::endJob()
 	std::cout << "True Longitudinal Profile 95% Containment:\t" << L_Containment  << std::endl;
 	std::cout << "True Longitudinal Profile Max Bin:\t" << hTrueEnergyProfile -> GetBinCenter(hTrueEnergyProfile -> GetMaximumBin())  << std::endl;
 	std::cout << "True Longitudinal Profile Max Bin Fit:\t" << TrueEnergyProfileFit->GetMaximumX() << std::endl;
+	std::cout << "True Longitudinal Profile tmed:\t" << L_tmed <<"\t3*tmed:\t" << 3*L_tmed  << std::endl;
+	std::cout << "True Longitudinal Profile Cal Length:\t" << L_Cal << std::endl;
 	std::cout << std::endl;
 	std::cout << "Moliere Radius Reco 2D:\t\t" 	   << hReco_PerpDist_2D_Rm        << "\t 2 * Moliere Radius Reco 2D:\t\t"        << hReco_PerpDist_2D_2Rm    << std::endl;
 	std::cout << "Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_Rm    << "\t 2 * Moliere Radius Reco 2D PCA:\t"   << hReco_PerpDist_2D_PCA_2Rm   << std::endl;

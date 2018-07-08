@@ -20,7 +20,7 @@ plt.rcParams.update({'errorbar.capsize': 1.2})    # Gives a cap to the errorbars
 #plt.rcParams["font.weight"] = "bold"              # sets all font weights to bold
 plt.rcParams["font.size"] = 18                    # Sets all font sizes to bold
 #plt.rcParams["axes.labelweight"] = "bold"         # Sets all label fontweights to bold 
-plt.rcParams["lines.markersize"] = 4
+plt.rcParams["lines.markersize"] = 6
 plt.rcParams["grid.linestyle"] = "--"
 plt.rcParams['figure.figsize'] = 8, 8 # Sets the figure size
 
@@ -112,9 +112,9 @@ textstr_Lon = 'Fit Parameters \n---------------------\n $X_0=%.1f$ cm \n $ E_c=%
 # =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
 
 # The maximum of the longitudinal profile (TMAX)
-TMax_Truth        = np.array([18, 26, 30, 34, 42, 42, 42, 42, 54, 42, 42, 54, 54, 54, 54])                                    # Peak Max values unfitted
-TMax_Truth_PFit   = np.array([18, 22.4, 27.5, 33.6, 37.0, 39.7, 39.8, 42.9, 46.5, 45.9, 48.6, 48.2, 50.2, 50.8, 52.6  ] )     # Fitted Peak max values
-TMax_Theory       = fTmax(Energy, E_c, X_0)                                                                                   # Get the TMax Variable from Theory
+TMax_Truth        = np.array([18, 26, 30, 34, 42, 42, 42, 42, 54, 42, 42, 54, 54, 54, 54])                                 # Peak Max values unfitted
+TMax_Truth_PFit   = np.array([18, 22.4, 27.5, 33.6, 37.0, 39.7, 39.8, 42.9, 46.5, 45.9, 48.6, 48.2, 50.2, 50.8, 52.6  ]    # Fitted Peak max values
+TMax_Theory       = fTmax(Energy, E_c, X_0)                                                                                # Get the TMax Variable from Theory
 TMax_Ratio        = TMax_Theory / TMax_Truth_PFit # Residuals
 
 # create a set of Parameters
