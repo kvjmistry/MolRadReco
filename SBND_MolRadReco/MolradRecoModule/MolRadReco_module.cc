@@ -519,9 +519,9 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						
 						// Use this block as opposed to above if want to use LArIAT geometry
-						//if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {
-						//	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;
-						//} 
+						// if (vHitPos[2] > 0. && vHitPos[2] < 90. && vHitPos[0] < 47. && vHitPos[1] < 40. && vHitPos[0] > -47. && vHitPos[1] > -40. ) {
+						// 	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;
+						// } 
 
 					} else { // 2D case
 						
@@ -532,9 +532,9 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
 						
 						// Use this block as opposed to above if want to use LArIAT geometry
-						//if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { 
-						//	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; 
-						//} // delete any spurious data points (z<0) and add the entries to the vector
+						// if (vHitPos[1] > 0. && vHitPos[1] < 90. && vHitPos[0] < 47. && vHitPos[0] > -47. ) { 
+						// 	addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; 
+						// } // delete any spurious data points (z<0) and add the entries to the vector
 
 						// Fill the 2D position histogram
 						if (HistFill != event) { 
@@ -787,6 +787,12 @@ void MolRadReco::beginJob() {
 
 //o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
 void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per event over all events
+
+	/// Select events to analyze
+	if (event.event() > 400 && event.event() < 501){
+		std::cout << "skipping event....\t" << event.event() << std::endl;
+		return;
+	}
 
 	std::cout  << "Event\t" <<event.event() << std::endl; // DIsplay the event number
 
