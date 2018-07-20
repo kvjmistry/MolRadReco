@@ -51,15 +51,16 @@ def fTmax_Residual(params, E, y):
     return (y - model)
 
 # Returns the 95% cintainment estimation in theory
-def fLongitudinal(E, E_c, Z, X_0):
-    return fTmax(E, E_c, X_0, 1) + (0.08 * Z + 9.6 ) * X_0 
+def fLongitudinal(E, E_c, Z, X_0, A):
+    return fTmax(E, E_c, X_0, 1) + (0.08 * Z + A ) * X_0 
 
 def fLongitudinal_Residual(params, E, y):
     X_0 = params['X_0']
     E_c = params['E_c']
     Z   = params['Z']
+    A   = params['A']
 
-    model = (np.log(E/E_c) - 1   + 0.08 * Z  + 9.6 ) * X_0
+    model = (np.log(E/E_c) - 1   + 0.08 * Z  + A ) * X_0
 
     return (y - model)
 
@@ -79,7 +80,7 @@ E_c    =  35.2                                # Critical Energy
 
 # The longitudinal profie in truth at 95% containment
 Lon_Truth   = np.array([108, 116, 128,132, 136, 140, 144,144, 148, 148, 148, 152, 152, 152, 156]) + 0 # Shift was 51
-Lon_Theory  = fLongitudinal(Energy, E_c, Z, X_0)
+Lon_Theory  = fLongitudinal(Energy, E_c, Z, X_0, A = 9.6)
 Lon_Ratio   = Lon_Theory / Lon_Truth
 
 # create a set of Parameters
@@ -87,6 +88,7 @@ p_Lon = Parameters()
 p_Lon.add('X_0', value = X_0, min = 0,   max = 20,  vary = True)
 p_Lon.add('E_c', value = E_c, min = 20,  max = 40,  vary = True)
 p_Lon.add('Z',   value = Z,  vary = False)
+p_Lon.add('A',   value = 9.6, vary = True) # Floating value in formula
 
 
 # Do fit, here with leastsq model
@@ -103,12 +105,13 @@ print "===== ===================== ===== \n\n"
  
 X_0_fit = fitresult_Lon.params['X_0'].value
 E_c_fit = fitresult_Lon.params['E_c'].value 
+A_fit = fitresult_Lon.params['A'].value 
 
 # Generate the fit to plot 
-Lon_Truth_fit = fLongitudinal(Energy, E_c, Z, X_0_fit)
+Lon_Truth_fit = fLongitudinal(Energy, E_c, Z, X_0_fit, A_fit)
 
 # Create a string for displaing on the plot
-textstr_Lon = 'Fit Parameters \n---------------------\n $X_0=%.1f$ cm \n $ E_c=%.1f$ MeV \n $\chi_r^2=%.1f$ \n' % (X_0_fit, E_c_fit,fitresult_Lon.redchi )
+textstr_Lon = 'Fit Parameters \n---------------------\n $X_0=%.1f$ cm \n $ E_c=%.1f$ MeV \n $A =%.1f$ \n $\chi_r^2=%.1f$ \n' % (X_0_fit, E_c_fit, A_fit, fitresult_Lon.redchi )
 
 
 # =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
@@ -166,6 +169,8 @@ R_m_3D_2   = np.array([23.1, 22.2, 23, 22.7, 22.4, 22.4, 22.4, 22.8, 22.3, 22.5,
 R_m_PDG    = 8.5  # PDG and Amaldi Definition of Moliere Radius
 R_m_Fabjan = 11   # Fabjan and Amaldi Definition of Moliere Radius
 
+Err_R_m_3D = np.array([0.3, 0.1, 0.2, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]) # Errors based on std from rm sets of 100 events 
+
 # LArIAT in SBND Moliere Radius
 R_m_LArIAT_SBND_3D = np.array([10.2, 9.5, 9.3, 8.8, 8.2, 8.2, 8, 7.9, 7.7, 7.7, 7.6, 7.4, 7.4, 7.2, 7.3])
 
@@ -216,7 +221,8 @@ plt.savefig("./Plots/Lon95%_Ratio.png", dpi=figqual)
 # ----------------------- Section 2: Moliere Radius --------------------
 
 plt.figure(4)
-plt.plot(Energy , R_m_3D , 'ro',   label = 'Truth')
+plt.errorbar(Energy , R_m_3D ,Err_R_m_3D, fmt='ro',   label = 'Truth')
+#plt.plot(Energy , R_m_3D ,'ro',   label = 'Truth')
 plt.axhline(y=R_m_Fabjan, color='b', linestyle='--', label = "Fabjan+ Amaldi")
 plt.axhline(y=R_m_PDG, color='k', linestyle='--', label = "PDG + Amaldi")
 plt.ylabel("Moliere Radius [cm]")
@@ -227,6 +233,7 @@ plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
 plt.savefig("./Plots/Moliere_Radius_SBND.png", dpi=figqual)
 
 plt.figure(5)
+#plt.errorbar(Energy , 2 * R_m_3D ,2 * Err_R_m_3D, fmt='ro',   label = 'Truth')
 plt.plot(Energy , 2 * R_m_3D , 'go',   label = 'Truth (2 * 90% Containment)')
 plt.plot(Energy , R_m_3D_2 , 'ro',   label = 'Truth (95% Containment)')
 plt.axhline(y=2 * R_m_Fabjan, color='b', linestyle='--', label = "Fabjan + Amaldi")
