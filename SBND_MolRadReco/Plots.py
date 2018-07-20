@@ -36,8 +36,11 @@ props = dict(boxstyle='square', fc="white", alpha = 1)
 
 # Functions
 # Calculated the maximum of the longitudinal profile
-def fTmax(E, E_c, X_0):
-    return X_0 * (np.log(E/E_c) - 1) # -1 for el, -0.5 for gamma
+def fTmax(E, E_c, X_0, a):
+    return X_0 * (np.log(E/E_c) - a) # a = 1 for el, 0.5 for gamma 
+
+def fTmed_to_Tmax(Tmed, X_0):
+    return Tmed - 1.5 * X_0
 
 def fTmax_Residual(params, E, y):   
     X_0 = params['X_0']
@@ -49,7 +52,7 @@ def fTmax_Residual(params, E, y):
 
 # Returns the 95% cintainment estimation in theory
 def fLongitudinal(E, E_c, Z, X_0):
-    return fTmax(E, E_c, X_0) + (0.08 * Z + 9.6 ) * X_0 
+    return fTmax(E, E_c, X_0, 1) + (0.08 * Z + 9.6 ) * X_0 
 
 def fLongitudinal_Residual(params, E, y):
     X_0 = params['X_0']
@@ -75,9 +78,9 @@ E_c    =  35.2                                # Critical Energy
 # =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
 
 # The longitudinal profie in truth at 95% containment
-Lon_Truth  = np.array([108, 116, 128,132, 136, 140, 144,144, 148, 148, 148, 152, 152, 152, 156]) + 0 # Shift was 51
-Lon_Theory = fLongitudinal(Energy, E_c, Z, X_0)
-Lon_Ratio  = Lon_Theory / Lon_Truth
+Lon_Truth   = np.array([108, 116, 128,132, 136, 140, 144,144, 148, 148, 148, 152, 152, 152, 156]) + 0 # Shift was 51
+Lon_Theory  = fLongitudinal(Energy, E_c, Z, X_0)
+Lon_Ratio   = Lon_Theory / Lon_Truth
 
 # create a set of Parameters
 p_Lon = Parameters()
@@ -113,8 +116,8 @@ textstr_Lon = 'Fit Parameters \n---------------------\n $X_0=%.1f$ cm \n $ E_c=%
 
 # The maximum of the longitudinal profile (TMAX)
 TMax_Truth        = np.array([18, 26, 30, 34, 42, 42, 42, 42, 54, 42, 42, 54, 54, 54, 54])                                 # Peak Max values unfitted
-TMax_Truth_PFit   = np.array([18, 22.4, 27.5, 33.6, 37.0, 39.7, 39.8, 42.9, 46.5, 45.9, 48.6, 48.2, 50.2, 50.8, 52.6  ]    # Fitted Peak max values
-TMax_Theory       = fTmax(Energy, E_c, X_0)                                                                                # Get the TMax Variable from Theory
+TMax_Truth_PFit   = np.array([18, 22.4, 27.5, 33.6, 37.0, 39.7, 39.8, 42.9, 46.5, 45.9, 48.6, 48.2, 50.2, 50.8, 52.6  ])    # Fitted Peak max values
+TMax_Theory       = fTmax(Energy, E_c, X_0, 1.0)                                                                              # Get the TMax Variable from Theory
 TMax_Ratio        = TMax_Theory / TMax_Truth_PFit # Residuals
 
 # create a set of Parameters
@@ -138,10 +141,21 @@ X_0_fit = fitresult_tmax.params['X_0'].value
 E_c_fit = fitresult_tmax.params['E_c'].value 
 
 # Generate the fit to plot 
-TMax_Truth_fit = fTmax(Energy, E_c_fit,X_0_fit)
+TMax_Truth_fit = fTmax(Energy, E_c_fit,X_0_fit,1)
 
 # Create a string for displaing on the plot
 textstr_tmax = 'Fit Parameters \n---------------------\n $X_0=%.1f$ cm \n $ E_c=%.1f$ MeV \n $\chi_r^2=%.1f$ \n' % (X_0_fit, E_c_fit,fitresult_tmax.redchi )
+
+
+# =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
+# =+=++=+=+=++=+=+=++= TMed Calculations =++=+=+=++=+=+=++=+=+=++=+=+=++=+
+
+Lon_Contain = np.array([136.333, 148.833, 163.667, 165.167, 170.667, 170, 174.667, 173.5, 178, 177.5, 180, 182.333, 182.5, 184, 187.667]) # L(98%) Containment sim
+Tmed        = np.array([27.1667, 38.8333, 44.6667, 49.5, 52.6667, 54.8333, 56.8333,58.6667, 62.1667, 62.1667, 64, 64.5, 66.1667, 66.8333, 68.5]) # tmed sim
+TMed_Theory = fTmax(Energy, E_c, X_0, -0.4) # theory
+Tmax_frm_Tmed_Truth  = fTmed_to_Tmax(Tmed, X_0) # truth
+Tmax_frm_Tmed_Theory = fTmed_to_Tmax(TMed_Theory, X_0) # theory
+
 
 # =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
 # =+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+=+=++=+
@@ -236,3 +250,36 @@ plt.grid()
 plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=2, mode="expand", borderaxespad=0., fontsize = 13.5)
 plt.savefig("./Plots/Moliere_Radius_LArIAT_SBND.png", dpi=figqual)
+
+# ----------------------- Plot the L(98%) Graphs --------------------
+
+plt.figure(7)
+plt.plot(Energy , Lon_Contain, 'bo',   label = 'Containment Lenth')
+plt.plot(Energy , 3 * Tmed , 'go',   label = '3 * $T_{med}$ Truth')
+plt.plot(Energy , 3 * TMed_Theory , 'r-',   label = '3 * $T_{med}$ Theory')
+plt.ylabel("Containment at 98% [cm]")
+plt.ylabel("Containment at 98% [cm]")
+plt.xlabel("Energy [MeV]")
+plt.grid()
+plt.legend()
+plt.savefig("./Plots/Containment_Length.png", dpi=figqual)
+
+plt.figure(8)
+plt.plot(Energy , Tmed, 'go',   label = '$T_{med}$ Truth')
+plt.plot(Energy , TMed_Theory , 'r-',   label = '$T_{med}$ Theory')
+plt.ylabel("$T_{med}$ [cm]")
+plt.xlabel("Energy [MeV]")
+plt.grid()
+plt.legend()
+plt.savefig("./Plots/Tmed.png", dpi=figqual)
+
+plt.figure(9)
+plt.plot(Energy , TMax_Theory, 'b-',   label = '$T_{max}$ Theory')
+plt.plot(Energy , TMax_Truth_PFit , 'ko',   label = '$T_{max}$ Truth')
+plt.plot(Energy , Tmax_frm_Tmed_Theory  , 'r-',   label = '$T_{max} = T_{med}^{Theory}$ - 1.5*X_0 ')
+plt.plot(Energy , Tmax_frm_Tmed_Truth  , 'go',   label = '$T_{max} = T_{med}^{Truth}$ - 1.5*X_0  ')
+plt.ylabel("$T_{max}$ [cm]")
+plt.xlabel("Energy [MeV]")
+plt.grid()
+plt.legend()
+plt.savefig("./Plots/Tmax_from_Tmed.png", dpi=figqual)
