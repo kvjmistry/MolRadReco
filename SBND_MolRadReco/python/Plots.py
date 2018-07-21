@@ -233,9 +233,9 @@ plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
 plt.savefig("./Plots/Moliere_Radius_SBND.png", dpi=figqual)
 
 plt.figure(5)
-#plt.errorbar(Energy , 2 * R_m_3D ,2 * Err_R_m_3D, fmt='ro',   label = 'Truth')
-plt.plot(Energy , 2 * R_m_3D , 'go',   label = 'Truth (2 * 90% Containment)')
-plt.plot(Energy , R_m_3D_2 , 'ro',   label = 'Truth (95% Containment)')
+plt.errorbar(Energy , 2 * R_m_3D ,2 * Err_R_m_3D, fmt='ro',   label = 'Truth')
+#plt.plot(Energy , 2 * R_m_3D , 'go',   label = 'Truth (2 * 90% Containment)')
+plt.plot(Energy , R_m_3D_2 , 'go',   label = 'Truth (95% Containment)')
 plt.axhline(y=2 * R_m_Fabjan, color='b', linestyle='--', label = "Fabjan + Amaldi")
 plt.axhline(y=2 * R_m_PDG, color='k', linestyle='--', label = "PDG + Amaldi")
 plt.ylabel("2 * Moliere Radius [cm]")
