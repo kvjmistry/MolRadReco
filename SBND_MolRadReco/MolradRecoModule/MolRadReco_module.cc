@@ -7,6 +7,11 @@
 // Generated at Fri Aug 11 12:10:37 2017 by Dylan White using cetskelgen
 // from cetlib version v3_00_01.
 
+// Disclaimer: I am currently updating this module to be detector independent
+// there will be some parameters that will need to be fine tuned
+
+// I also have not yet made any documentation for this module
+
 // Modified by Krishan Mistry 11-10-2017 e: krishan.mistry-5@postgrad.manchester.ac.uk
 
 ////////////////////////////////////////////////////////////////////////
@@ -153,11 +158,26 @@ private:
 	TH1D* 	hPerpDist;						// Histogram used for calculating moliere radius
 
 	// Doubles	
-	double pitch{0.3} ;	        		// 3 mm wire spacing in SBND
 	double dEnergySumTotal;		        	// total energy over all events
 	double dEnergyDepositedSum; 
 	double PCA_E_Total= 0.;
 	double Truth_E_Total;
+
+
+	// Change these paramteres to make it SBND or LArIAT Specific. 
+	// General Parameters
+	double pitch{0.3} ;	        		    // 3 mm wire spacing in SBND 4mm/cos60 in LArIAT
+	double shiftx{102.5} ;                  // The shift in true xpos to center on zero (based on prodsin gen positions)
+	double shifty{0} ;
+	double shiftz{250.0} ; 
+	int channelshift{10440} ; // shift to convert channel number to z position 
+	double dEdx_cut{1000} ;  // cut to decide in reco, where to use a linear fit.
+	double calbration_p0{-.3594} ; // reclaibration contants for linear fit 
+	double calbration_p1{0.007484} ; 
+	double histrange_len{500}; // A axis range to the histogram to account for the containiment
+	double histrange_bins{3000}; // A axis bin range for true energy profile
+
+	// Histogram Parameters
 
 	// Integers
 	int fills = 0;	
@@ -504,17 +524,17 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 					// get IDE
 					const sim::IDE& energyDeposit = (*energyPtr);
 					TruthEnergyDeposits.push_back(energyDeposit.energy);
-					TruthZPos.push_back(energyDeposit.z - 250.);   // add z pos to a tree
-					TruthXPos.push_back(energyDeposit.x - 102.5); // add xpos to tree
+					TruthZPos.push_back(energyDeposit.z - shiftz);   // add z pos to a tree
+					TruthXPos.push_back(energyDeposit.x - shiftx); // add xpos to tree
 
 					
 					// Add hit coordinates to PCA vectors					
 					
 					if (use3D == true) {
 						TVectorD vHitPos(3);
-						vHitPos[0] = energyDeposit.x - 102.5;	// X
+						vHitPos[0] = energyDeposit.x - shiftx;	// X
 						vHitPos[1] = energyDeposit.y;	        // Y
-						vHitPos[2] = energyDeposit.z - 250.;	// Z
+						vHitPos[2] = energyDeposit.z - shiftz;	// Z
 
 						if (vHitPos[2] > 0. ) {addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy;} // delete any spurious data points (z<0) and add the entries to the vector
 						
@@ -526,8 +546,8 @@ double MolRadReco::GetTruthXYZE(simChannelVec_t simChannelVec, bool use3D, int e
 					} else { // 2D case
 						
 						TVectorD vHitPos(2);
-						vHitPos[0] = energyDeposit.x - 102.5;	// X
-						vHitPos[1] = energyDeposit.z - 250.;	// Z
+						vHitPos[0] = energyDeposit.x - shiftx;	// X
+						vHitPos[1] = energyDeposit.z - shiftz;	// Z
 						
 						if (vHitPos[1] > 0.) { addDataEntry(energyDeposit.energy, vHitPos); dEnergyDepositedSum += energyDeposit.energy; } // delete any spurious data points (z<0) and add the entries to the vector
 						
@@ -585,7 +605,7 @@ double MolRadReco::GetRecoXYZE(art::Event const & event,  double dEnergySum ){
 					
 					// Z [contains the stored hit positions with a geometrical factor conversion for wire plane spacing ]
 					// -10440 for shifting channel
-					vHitPos[1] = ((double) hit -> Channel() - 10440) * pitch; 
+					vHitPos[1] = ((double) hit -> Channel() - channelshift) * pitch; 
 
 					// Make conversion of hits from ADC*Ticks to MeV/cm 					
 					double T0 = 0;   // Initial start time
@@ -596,10 +616,10 @@ double MolRadReco::GetRecoXYZE(art::Event const & event,  double dEnergySum ){
 					dEdx = fCalorimetryAlg.dEdx_AREA(*hit,pitch, T0)  ; 
 					
 					// Look for unusually large dEdx values and replace with the previous value to correct
-                    if(hit->Integral() > 1000){ 
+                    if(hit->Integral() > dEdx_cut){ 
 						
 						// Use a modified calibration for dEdx
-						dEdx = 0.007484 * hit->Integral() + -.3594; 	
+						dEdx = calbration_p1 * hit->Integral() + calbration_p0 ; 	
 			
 					}
 					
@@ -660,19 +680,19 @@ void MolRadReco::beginJob() {
 	// *************************** Energy Profile Plots *********************************
 
 	// Energy profile No Algorithm
-	hEnergyProfile = tfs->make<TH1D>("energyprofile","Energy Profile of Events; Z [cm]; [MeV/cm]",30,0.,500.);
+	hEnergyProfile = tfs->make<TH1D>("energyprofile","Energy Profile of Events; Z [cm]; [MeV/cm]",30,0., histrange_len); //LArIAT: 500-> 100
 
 	// Energy profile PCA RECO
-	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis); Z [cm]; dEdx [MeV/cm]",100,0.,500.);
+	hEnergyProfilePCA = tfs->make<TH1D>("energyprofilePCA","Energy Profile of Events (PCA Axis); Z [cm]; dEdx [MeV/cm]",100,0., histrange_len); //LArIAT: 500->100
 
 	// True Energy profile 
-	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",3000,0.,500.);
+	hTrueEnergyProfile = tfs->make<TH1D>("trueenergyprofile","Energy Profile of Events (Truth); Z [cm]; True dE [MeV]",histrange_bins,0.,histrange_len); //LArIAT: 3000->125, 500->100
 
 	// True energy profile in X direction
 	hTrueEnergyProfileX = tfs->make<TH1D>("hTrueEnergyProfileX","Energy Profile of Events (Truth) in X Dir; X [cm]; True dE [MeV]",600,-60.,60.);
 	
 	// True energy profile in R direction
-	hTrueEnergyProfileR = tfs->make<TH1D>("hTrueEnergyProfileR","Energy Profile of Events (Truth) in Radial Dir; r [cm]; True dE [MeV]",1000,0.,100.);
+	hTrueEnergyProfileR = tfs->make<TH1D>("hTrueEnergyProfileR","Energy Profile of Events (Truth) in Radial Dir; r [cm]; True dE [MeV]",1000,0.,100.); 
 
 	// ********************************************************************************
 
@@ -681,7 +701,7 @@ void MolRadReco::beginJob() {
 	hERecoTruthScat->SetOption("SCAT");
 
 	// Reco-Truth energy Histogram
-	hERecoTruthDiff = tfs->make<TH1D>("ERecoTruthDiff","Difference of Energy Truth minus Reco; Energy Difference [MeV]; Frequency Density",200,-50.,250.);
+	hERecoTruthDiff = tfs->make<TH1D>("ERecoTruthDiff","Difference of Energy Truth minus Reco; Energy Difference [MeV]; Frequency Density",200,-50.,250.); //LArIAT: -50->-20., 250 -> 100.
 	
 	// Energy Calibration scatter plot
 	gCorr_2Dt_3Dt = tfs->makeAndRegister<TGraph>("gCorr_2Dt_3Dt", "2D Truth to 3D Truth Moliere Radius Scatter Plot; 2D Moliere Radius [cm]; 3D Moliere Radius [cm]");
@@ -789,10 +809,10 @@ void MolRadReco::beginJob() {
 void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per event over all events
 
 	/// Select events to analyze
-	if (event.event() > 400 && event.event() < 501){
-		std::cout << "skipping event....\t" << event.event() << std::endl;
-		return;
-	}
+	// if (event.event() > 400 && event.event() < 501){
+	// 	std::cout << "skipping event....\t" << event.event() << std::endl;
+	// 	return;
+	// }
 
 	std::cout  << "Event\t" <<event.event() << std::endl; // DIsplay the event number
 
@@ -1110,11 +1130,10 @@ void MolRadReco::analyze(art::Event const & event) { // Analyser: runs once per 
 
 }
 // o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o END JOB 0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oo0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o
-void MolRadReco::endJob()
-{
-	// Normalize Histograms
+void MolRadReco::endJob() {
 	std::cout << "Beginning END JOB " << std::endl;
-
+	
+	// Normalize Histograms
 	// Loop over all y bins
 	for (int j = 1; j <= hMolRadCorrelation2Dh2Dt->GetNbinsY(); j++) { 
 		double iYCount = 0; // Total value in each row, reset every loop
@@ -1181,7 +1200,6 @@ void MolRadReco::endJob()
 	}
 	
 	
-
 	// Fit the ECalScat graph
 	gECalScat->Fit("pol1", "","", 0, 1000);
 	ECalScatFit = gECalScat->GetFunction("pol1");
